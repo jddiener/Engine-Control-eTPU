@@ -1,0 +1,3143 @@
+ETEC Tools V3.00A                  ASH WARE Inc.                  (C) 2015-2020
+    /*******************************************************************************
+    * This file has been modified by ASH WARE Inc. as allowed per the original 
+    * license (see bottom of file), to add features and fix issues.
+    *******************************************************************************/
+    
+    /*******************************************************************************
+    *
+    *  FREESCALE SEMICONDUCTOR INC. 2012-2014
+    *  ALL RIGHTS RESERVED
+    *  COPYRIGHT (c)
+    *
+    ********************************************************************************
+    *
+    *  FILE NAME:  etpuc_crank.c
+    *
+    *  DESCRIPTION:
+    *    This eTPU function processes the tooth signal from a crankshaft sensor and 
+    *    generates an internal angle-base using the Enhanced Angle Counter
+    *    (EAC) eTPU hardware. The Angle Base is maintained in TCR2.
+    *    The Crank eTPU function keeps track of the overall synchronization state.
+    *    It reports via interrupt to the CPU when the overall synchronization state
+    *    changes. Additionally, and interrupt and DMA request (eTPU2 only) is 
+    *    generated periodically every engine cycle.
+    *
+    *    There are differences in functionality between this function and
+    *    the original set2 Crank. In order to achieve the full synchronization state,
+    *    this function asks the CPU to decode a Cam pattern logged during a defined
+    *    number of Crank teeth (teeth_per_sync) and set the angle value of the last
+    *    gap within 0-720. Thanks to this, the Crank (and Cam) function is much more
+    *    general and enables to handle a wide range of Crank patters:
+    *    - a single gap pattern or a multiple equally-spaced gaps
+    *    - a 1, 2 or 3-teeth gap (eTPU and eTPU2) or up to 7-teeth gap (eTPU2+)
+    *    - an additional tooth instead of the gap
+    *    Generally any kind of a Cam pattern, or even a pattern of more Cam signals,
+    *    can be handled, because the Cam log is decoded by the CPU.
+    *
+    *******************************************************************************/
+    
+    /*******************************************************************************
+    *  Includes
+    *******************************************************************************/
+    #include <etpu_std.h>
+    #include "etpuc_crank.h"
+    #include "etpuc_set.h"
+    
+    #pragma verify_version GE, "3.00A", "use ETEC version 3.00A or newer"
+    
+    /*******************************************************************************
+    *  eTPU Function Parameters:
+    *
+    *   teeth_till_gap         - number of physical teeth gap to gap
+    *   teeth_in_gap           - number if missing teeth in the gap.
+    *                            If there is an additional tooth instead of the gap,
+    *                            this parameter must be set to 0.
+    *   teeth_per_cycle        - number of teeth (including missing teeth in gap)
+    *                            per an engine cycle (720 degrees). It must be
+    *                            a multiple of (teeth_till_gap + teeth_in_gap).
+    *   teeth_per_sync         - number of teeth (including missing teeth in gap)
+    *                            corresponding to a segment needed for Cam log.
+    *                            It must be a multiple of
+    *                            (teeth_till_gap + teeth_in_gap).
+    *   tooth_counter_gap      - it counts from 1 to teeth_till_gap
+    *   tooth_counter_cycle    - it counts from 1 to teeth_per_cycle
+    *   blank_teeth            - number of teeth ignored after initialization
+    *   blank_time             - TCR1 time period after initialization during which
+    *                            teeth are ignored,
+    *   tcr2_ticks_per_tooth   - number of TCR2 angle ticks per tooth
+    *   tcr2_ticks_per_add_tooth-number of TCR2 angle ticks from the last tooth to the additional tooth
+    *   last_tooth_tcr1_time   - TCR1 time of the last tooth transition
+    *   last_tooth_period      - TCR1 period between last 2 teeth
+    *   last_tooth_period_norm - TCR1 period normalized over the gap or additional tooth
+    *   tcr2_adjustment        - TCR2 angle value corresponding to the angle on the
+    *                            first tooth after gap, at which the PRE_FULL_SYNC
+    *                            state was set and CPU was asked to recognize the
+    *                            Cam log pattern.
+    *   gap_ratio              - fraction used to perform the ABA gap test:
+    *                              gap_ratio * tooth_period_B > tooth_period_A
+    *   win_ratio_normal       - fraction used to derive the acceptance window for
+    *                            the next normal tooth
+    *   win_ratio_across_gap   - fraction used to derive the acceptance window for
+    *                            the first tooth after the gap
+    *   win_ratio_after_gap    - fraction used to derive the acceptance window for
+    *                            the second tooth after the gap
+    *   win_ratio_after_timeout- fraction used to derive the acceptance window for
+    *                            the tooth following a timeout condition
+    *   first_tooth_timeout    - TCR1 time after the first tooth (after blank_teeth)
+    *                            when a timeout will be deemed to have happened
+    *   link_cam               - set of 4 link numbers to send to reset the Cam log
+    *                            (up to 4 Cam channel numbers)
+    *   link_1                 - the first  set of 4 link numbers to send on stall
+    *   link_2                 - the second set of 4 link numbers to send on stall
+    *   link_3                 - the third  set of 4 link numbers to send on stall
+    *   link_4                 - the fourth set of 4 link numbers to send on stall
+    *   state                  - used to keep track of the CRANK state. See header
+    *                            file for possible values.
+    *   error                  - crank error flags. See header file for individual
+    *                            bits meaning. The eTPU sets them, the CPU should
+    *                            read and clear.
+    *   *tooth_period_log      - pointer to an array of tooth periods.
+    *                            The array must include teeth_per_cycle items.
+    *   err2477_tcr2_target    - used to keep track of when the Angle Counter is not
+    *                            in high rate mode for errata 2477 workaround
+    *
+    ********************************************************************************
+    *
+    *  Channel Flag usage
+    *    Flag0 is used to handle a crank wheel with gap(s) and a crank wheel with
+    *      additional tooth separately:
+    *      - CRANK_FLAG0_GAP
+    *      - CRANK_FLAG0_ADDITIONAL_TOOTH
+    *    Flag1 is not used.
+    *
+    ********************************************************************************
+    *
+    *  Channel Function Mode (FM) bits usage
+    *    FM0 is used to select the polarity of crank transition to detect:
+    *      - CRANK_FM0_USE_TRANS_RISING
+    *      - CRANK_FM0_USE_TRANS_FALLING
+    *    FM1 is used to turn on logging of crank tooth periods:
+    *      - CRANK_FM1_LOG_TOOTH_PERIODS
+    *
+    ********************************************************************************
+    *
+    *  Channel Interrupt usage
+    *    The channel interrupt on the CRANK channel is set when the global Engine
+    *    Position State is changed and on the first tooth every engine cycle when 
+    *    the global Engine Position State is FULL_SYNC. 
+    *    The Crank channel interrupt handler should follow this example:
+    *
+    *    eTPUCrankInterruptHandler()
+    *    {
+    *      * Read Engine Position State eng_pos_state.
+    *      switch(eng_pos_state)
+    *      {
+    *      case FS_ETPU_ENG_POS_SEEK:
+    *        * Crank has stalled. Read Crank error to know the reason.
+    *        break;
+    *      case FS_ETPU_ENG_POS_FIRST_HALF_SYNC:
+    *        * Crank has found the gap, or
+    *        * Crank did not received CRANK_HSR_SET_SYNC and hence Crank reset
+    *        * the Cam log to repeat recording the Cam log.
+    *        break;
+    *      case FS_ETPU_ENG_POS_PRE_FULL_SYNC:
+    *        * Cam signal is logged, the log corresponds to a segment of
+    *        * teeth_per_sync Crank teeth starting from a gap.
+    *        * NOW THE CPU MUST RECOGNIZE THE LOGGED CAM PATTERN AND
+    *        * 1) SET tcr2_adjustment
+    *        * 2) ASSIGN CRANK HSR = CRANK_HSR_SET_SYNC.
+    *        break;
+    *      case FS_ETPU_ENG_POS_FULL_SYNC:
+    *        * Regular interrupt on the first tooth every engine cycle.
+    *        break;
+    *      }
+    *    }
+    *
+    *******************************************************************************/
+    
+    /*******************************************************************************
+    *  Global Variables
+    *******************************************************************************/
+          uint8_t   eng_pos_state;
+    const uint24_t  eng_cycle_tcr2_ticks = 0; /* initilaized by host driver */
+          uint24_t  eng_cycle_tcr2_start;
+          uint24_t  eng_trr_norm = 0xffffff;
+    
+    
+    /*******************************************************************************
+    *  Global Functions
+    *******************************************************************************/
+    
+    #define TRR_FRACTIONAL_BITS         9
+    #define TRR_HIGHRES_REMAINDER_SHIFT 6
+    #define TRR_HIGHRES_DIVISOR_MASK    0xfc0000 /* # bits matches remainder shift */
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: CRANK_Time_to_Angle_HighRes
+    *  DESCRIPTION: Converts a time in TCR1 ticks to an angle value, using the current
+    *    angle velocity.  This version is more computationally intensive, but yields
+    *    a more accurate result.  Should be used when calculating the match value for
+    *    a signal edge.  Accuracy is always within 1 TCR2 tick of theoretical
+    *    rounded floating point division.
+    *******************************************************************************/
+    int24_t CRANK_Time_to_Angle_HighRes(
+        register_a uint24_t time)
+    {
+        uint24_t atr = eng_trr_norm;
+0900: 0x9DEF4B02   alu    diob = ((u24) 0)+0x1;
+    :              ram   p_23_0 = *((global int24 *) 0x9);;
+0904: 0x00081419   alu    sr = p+0x0;;
+        uint24_t time_shift = 1;
+        uint24_t round_up;
+        uint24_t result;
+        register _MACH uint24_t remainder;
+        register _MACL uint24_t quotient;
+        
+        /* step 1 : maximize dividend to improve integer division accuracy */
+        
+        time <<= 1; /* times passed to this routine must be less than 0x800000, can shift by 1 immediately */
+0908: 0x10090F9E   alu    a = (a+0x0) << 1;;
+        while ((time & 0x800000) == 0)
+090C: 0x1A09739A   alu    p = a & 0x800000, SampleFlags;;
+0910: 0xF0D04A87   seq  if z==false then goto addr_0x950, flush;;
+        {
+            if (time < 0x10000)
+0914: 0x00001400   alu    p = ((u24) 0)+0x10000;;
+0918: 0x1C19FEFF   alu    nil = a-p, SampleFlags;;
+091C: 0xF0904967   seq  if cFlag==false then goto addr_0x92C, flush;;
+            {
+                time <<= 8;
+0920: 0x1C090BCA   alu    a = a << 8;;
+                time_shift += 8;
+            }
+0924: 0xF7F04867   seq  goto addr_0x90C, no_flush;;
+0928: 0x002B4419   alu    diob = diob+0x8;;
+            else if (time < 0x100000)
+092C: 0x00010400   alu    p = ((u24) 0)+0x100000;;
+0930: 0x1C19FEFF   alu    nil = a-p, SampleFlags;;
+0934: 0xF0904A27   seq  if cFlag==false then goto addr_0x944, flush;;
+            {
+                time <<= 4;
+0938: 0x1C090BAA   alu    a = a << 4;;
+                time_shift += 4;
+            }
+093C: 0xF7F04867   seq  goto addr_0x90C, no_flush;;
+0940: 0x001B4419   alu    diob = diob+0x4;;
+            else
+            {
+                time <<= 1;
+0944: 0x10090F9E   alu    a = (a+0x0) << 1;;
+                time_shift += 1;
+            }
+        }
+0948: 0xF7F04867   seq  goto addr_0x90C, no_flush;;
+094C: 0x000B4439   alu    diob = diob+0x1;;
+        
+        /* step 2: decrease the number of dividend fractional bits if it is large */
+    
+        round_up = 0;
+0950: 0x000F0411   alu    cReg = ((u24) 0)+0x0;;
+        while (atr & TRR_HIGHRES_DIVISOR_MASK)
+0954: 0x1BFA739A   alu    p = sr & 0xFC0000, SampleFlags;;
+0958: 0xF0D84B87   seq  if z==true then goto addr_0x970, flush;;
+        {
+            round_up = atr & 1;
+095C: 0x0C0A7BBA   alu    p = sr & 0x1;;
+0960: 0x00080411   alu    cReg = p+0x0;;
+            atr >>= 1;
+0964: 0x140A1F9E   alu    sr = (sr+0x0) >> 1;;
+            time_shift += 1;
+        }
+0968: 0xF7F04AA7   seq  goto addr_0x954, no_flush;;
+096C: 0x000B4439   alu    diob = diob+0x1;;
+        atr += round_up;
+0970: 0x1F511FEF   alu    sr = cReg+sr;;
+    
+        /* step 3: perform first division */
+        
+        result = time / atr;
+0974: 0x2F59FFEE   alu    mac = a / ((u24) sr);;
+0978: 0xF3584BC7   seq  if MacBusy==true then goto addr_0x978, flush;;
+097C: 0x00085401   alu    d = macl+0x0;;
+        remainder <<= TRR_HIGHRES_REMAINDER_SHIFT;
+0980: 0x00000420   alu    p = ((u24) 0)+0x1;;
+0984: 0x3F173F99   alu    b = mach << (2^^(p+1));;
+0988: 0x2F937FF9   alu    mach = b << 2;;
+    
+        /* step 4: divide remainder from first division to gain resolution for the result */
+    
+        if (time_shift <= 4)
+098C: 0x001F7419   alu    p = ((u24) 0)+0x4;;
+0990: 0x1C1BFEFF   alu    nil = diob-p, SampleFlags;;
+0994: 0xF4D051C7   seq  if LowerOrEqual==false then goto addr_0xA38, flush;;
+        {
+            uint24_t tmp;
+    
+            /* in this case the divisor resolution must be reduced in steps to improve final accuracy */
+    
+            /* put result in final resolution */
+            result <<= 4;
+0998: 0x1C047BAA   alu    p = d << 4;;
+099C: 0x00085411   alu    d = p+0x0;;
+            time_shift += 4;
+09A0: 0x001B4419   alu    diob = diob+0x4;;
+            tmp = 9 - time_shift;
+09A4: 0x002F3431   alu    b = ((u24) 0)+0x9;;
+09A8: 0x1C730FE7   alu    cReg = b-diob;;
+            while (tmp-- > 0)
+09AC: 0x00013001   alu    b = cReg+0x0, SampleFlags;;
+09B0: 0xF0F84E07   seq  if z==true then goto addr_0x9C0, no_flush;;
+09B4: 0x1EF10FE7   alu    cReg = cReg-0x0-1;;
+                result <<= 1;
+09B8: 0xF7F04D67   seq  goto addr_0x9AC, no_flush;;
+09BC: 0x10045F96   alu    d = (d+0x0) << 1;;
+    
+            /* only down-res the divisor by 4 bits for the second divide */        
+            atr >>= 3;
+09C0: 0x1C0A7B92   alu    p = sr >> 2;;
+09C4: 0x1C081792   alu    sr = (p+0x0) >> 1;;
+            round_up = atr & 1;
+09C8: 0x0C0A7BBA   alu    p = sr & 0x1;;
+            atr >>= 1;
+09CC: 0x140A1F9E   alu    sr = (sr+0x0) >> 1;;
+            atr += round_up;
+09D0: 0x1F581FFF   alu    sr = p+sr;;
+            
+            /* peform second divide and add its result to final result sum */
+            tmp = time_shift - (TRR_FRACTIONAL_BITS - TRR_HIGHRES_REMAINDER_SHIFT);
+09D4: 0x000F7479   alu    p = ((u24) 0)+0x3;;
+09D8: 0x1C1B0FF7   alu    cReg = diob-p;;
+            quotient = remainder / atr;
+09DC: 0x3F57FFAE   alu    mac = mach / ((u24) sr);;
+09E0: 0xF3584F07   seq  if MacBusy==true then goto addr_0x9E0, flush;;
+            while (tmp-- > 0)
+09E4: 0x00013001   alu    b = cReg+0x0, SampleFlags;;
+09E8: 0xF0F84FC7   seq  if z==true then goto addr_0x9F8, no_flush;;
+09EC: 0x1EF10FE7   alu    cReg = cReg-0x0-1;;
+                quotient >>= 1;
+09F0: 0xF7F04F27   seq  goto addr_0x9E4, no_flush;;
+09F4: 0x14088F86   alu    macl = (macl+0x0) >> 1;;
+            result += quotient;
+09F8: 0x00087409   alu    p = macl+0x0;;
+09FC: 0x1F145FF7   alu    d = d+p;;
+            remainder <<= TRR_HIGHRES_REMAINDER_SHIFT;
+0A00: 0x00000420   alu    p = ((u24) 0)+0x1;;
+0A04: 0x3F173F99   alu    b = mach << (2^^(p+1));;
+0A08: 0x2F937FF9   alu    mach = b << 2;;
+            
+            /* perform final divisor de-resolution as necessary to ensure last division has resolution to final bit */
+            round_up = 0;
+0A0C: 0x000F0411   alu    cReg = ((u24) 0)+0x0;;
+            while (time_shift < 9)
+0A10: 0x002F3431   alu    b = ((u24) 0)+0x9;;
+0A14: 0x1C73FEEF   alu    nil = b-diob, SampleFlags;;
+0A18: 0xF4D85187   seq  if LowerOrEqual==true then goto addr_0xA30, flush;;
+            {
+                round_up = atr & 1;
+0A1C: 0x0C0A7BBA   alu    p = sr & 0x1;;
+0A20: 0x00080411   alu    cReg = p+0x0;;
+                atr >>= 1;
+0A24: 0x140A1F9E   alu    sr = (sr+0x0) >> 1;;
+                time_shift += 1;
+            }
+0A28: 0xF7F05087   seq  goto addr_0xA10, no_flush;;
+0A2C: 0x000B4439   alu    diob = diob+0x1;;
+            atr += round_up;
+        }
+0A30: 0xF7F05447   seq  goto addr_0xA88, no_flush;;
+0A34: 0x1F511FEF   alu    sr = cReg+sr;;
+        else
+        {
+            /* in this case desired result accuracy can be achieved by going direct to final divisor resolution */
+    
+            round_up = 0;
+0A38: 0x000F0411   alu    cReg = ((u24) 0)+0x0;;
+            while (time_shift < TRR_FRACTIONAL_BITS)
+0A3C: 0x002F3431   alu    b = ((u24) 0)+0x9;;
+0A40: 0x1C73FEEF   alu    nil = b-diob, SampleFlags;;
+0A44: 0xF4D85307   seq  if LowerOrEqual==true then goto addr_0xA60, flush;;
+            {
+                result <<= 1;
+0A48: 0x10045F96   alu    d = (d+0x0) << 1;;
+                round_up = atr & 1;
+0A4C: 0x0C0A7BBA   alu    p = sr & 0x1;;
+0A50: 0x00080411   alu    cReg = p+0x0;;
+                atr >>= 1;
+0A54: 0x140A1F9E   alu    sr = (sr+0x0) >> 1;;
+                time_shift += 1;
+            }
+0A58: 0xF7F051E7   seq  goto addr_0xA3C, no_flush;;
+0A5C: 0x000B4439   alu    diob = diob+0x1;;
+            atr += round_up;
+0A60: 0x1F511FEF   alu    sr = cReg+sr;;
+    
+            /* peform second divide and add its result to final result sum */
+            result += (remainder / atr) >> TRR_HIGHRES_REMAINDER_SHIFT;
+0A64: 0x3F57FFAE   alu    mac = mach / ((u24) sr);;
+0A68: 0xF3585347   seq  if MacBusy==true then goto addr_0xA68, flush;;
+0A6C: 0x00000420   alu    p = ((u24) 0)+0x1;;
+0A70: 0x3F183F9A   alu    b = macl >> (2^^(p+1));;
+0A74: 0x2FD37FFA   alu    p = b >> 2;;
+0A78: 0x1F145FF7   alu    d = d+p;;
+            remainder <<= TRR_HIGHRES_REMAINDER_SHIFT;
+0A7C: 0x00000420   alu    p = ((u24) 0)+0x1;;
+0A80: 0x3F173F99   alu    b = mach << (2^^(p+1));;
+0A84: 0x2F937FF9   alu    mach = b << 2;;
+        }
+    
+        /* step 5: perform 3rd division on remainder to get final bits of accuracy */
+    
+        result += (remainder / atr) >> (TRR_HIGHRES_REMAINDER_SHIFT*2);
+0A88: 0x3F57FFAE   alu    mac = mach / ((u24) sr);;
+0A8C: 0xF3585467   seq  if MacBusy==true then goto addr_0xA8C, flush;;
+0A90: 0x00000440   alu    p = ((u24) 0)+0x2;;
+0A94: 0x3F183F9A   alu    b = macl >> (2^^(p+1));;
+0A98: 0x00000420   alu    p = ((u24) 0)+0x1;;
+0A9C: 0x3F137FBA   alu    p = b >> (2^^(p+1));;
+0AA0: 0x1F145FF7   alu    d = d+p;;
+        /* down-res final result if too high (still contains fractional bits) */
+        round_up = 0;
+0AA4: 0x000F0411   alu    cReg = ((u24) 0)+0x0;;
+        while (time_shift > TRR_FRACTIONAL_BITS)
+0AA8: 0x002F3431   alu    b = ((u24) 0)+0x9;;
+0AAC: 0x1C73FEEF   alu    nil = b-diob, SampleFlags;;
+0AB0: 0xF0905647   seq  if cFlag==false then goto addr_0xAC8, flush;;
+        {
+            round_up = result & 1;
+0AB4: 0x0C047BBA   alu    p = d & 0x1;;
+0AB8: 0x00080411   alu    cReg = p+0x0;;
+            result >>= 1;
+0ABC: 0x14045F96   alu    d = (d+0x0) >> 1;;
+            time_shift -= 1;
+        }
+0AC0: 0xF7F05547   seq  goto addr_0xAA8, no_flush;;
+0AC4: 0x1EFB4FFF   alu    diob = diob-0x0-1;;
+        result += round_up;
+0AC8: 0x00017409   alu    p = cReg+0x0;;
+    
+        return result;
+    }
+0ACC: 0xFFFFCEF9   seq  return, no_flush;;
+0AD0: 0x1F140FFF   alu    a = d+p;;
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: CRANK_Time_to_Angle_LowRes
+    *  DESCRIPTION: Converts a time in TCR1 ticks to an angle value, using the current
+    *    angle velocity.  This version is quick but has lower resolution output.
+    *******************************************************************************/
+    int24_t CRANK_Time_to_Angle_LowRes(
+        register_a uint24_t time)
+    {
+        return (time / (uint24_t)(eng_trr_norm >> 6)) << 3;
+0AD4: 0x9FEFFB02   ram   p_23_0 = *((global int24 *) 0x9);;
+0AD8: 0x1C081BB2   alu    sr = p >> 4;;
+0ADC: 0x1C0A1B92   alu    sr = sr >> 2;;
+0AE0: 0x2F59FFEE   alu    mac = a / ((u24) sr);;
+0AE4: 0xF3585727   seq  if MacBusy==true then goto addr_0xAE4, flush;;
+0AE8: 0x2FD81FF9   alu    sr = macl << 2;;
+    }
+0AEC: 0xFFFFCEF9   seq  return, no_flush;;
+0AF0: 0x1C0A078A   alu    a = (sr+0x0) << 1;;
+    
+    
+    /*******************************************************************************
+    *  eTPU Class Methods/Fragments
+    *******************************************************************************/
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: Window_NoReturn
+    *  DESCRIPTION: Schedule transition acceptance window using win_ratio and
+    *    tooth_period, and end the thread.
+    *******************************************************************************/
+    _eTPU_fragment CRANK::Window_NoReturn(
+    	register_a fract24_t win_ratio,
+    	register_d uint24_t tooth_period)
+    {
+    	uint24_t half_window_width;
+    
+    	half_window_width = muliur(tooth_period, win_ratio);
+0AF4: 0x10037F8E   alu    p = (b+0x0) << 1;;
+0AF8: 0x2F14FFE9   alu    mac = d * ((u24) p);;
+0AFC: 0xF35857E7   seq  if MacBusy==true then goto addr_0xAFC, flush;;
+0B00: 0x00071409   alu    sr = mach+0x0;;
+    	erta = erta + tooth_period - half_window_width;
+0B04: 0x00047419   alu    p = d+0x0;;
+0B08: 0x1F1E3FF7   alu    b = ertA+p;;
+0B0C: 0x1C532FEF   alu    ertA = b-sr;;
+    	ertb = erta + (half_window_width << 1);
+0B10: 0x100A7F9E   alu    p = (sr+0x0) << 1;;
+    	channel.MRLA = MRL_CLEAR;
+    	channel.MRLB = MRL_CLEAR;
+    	channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+    	channel.TDL = TDL_CLEAR;  /* clear noise transition, if any */
+0B14: 0x6F0E3E1F   alu    ertB = ertA+p;
+    :              chan  clear TransitionDetectionLatches, clear MatchRecognitionLatchA, matchA = ertA, set MatchEnableLatchA, clear MatchRecognitionLatchB,
+    :                    matchB = ertB, set MatchEnableLatchB;
+    :              seq   end;;
+    }
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: WindowAcrossGap_NoReturn
+    *  DESCRIPTION: Open transition acceptance window using win_ratio and
+    *    close it using win_ratio_across_gap and the number of teeth_in_gap,
+    *    and end the thread.
+    *******************************************************************************/
+    _eTPU_fragment CRANK::WindowAcrossGap_NoReturn(
+    	register_a uint24_t tooth_period)
+    {
+    	uint24_t half_window_width;
+    
+    	half_window_width = muliur(tooth_period, win_ratio_across_gap);
+0B18: 0xBFEFFB8B   ram   p_23_0 = *((channel int24 *) 0x2D);;
+0B1C: 0x2F19FFE9   alu    mac = a * ((u24) p);;
+0B20: 0xF3585907   seq  if MacBusy==true then goto addr_0xB20, flush;;
+0B24: 0x00071409   alu    sr = mach+0x0;;
+    	ertb = erta + (tooth_period*(teeth_in_gap + 1U))
+    			   + half_window_width;
+0B28: 0xCFEFF982   ram   p_31_24 = *((channel int8 *) 0x8);;
+0B2C: 0x3FF23854   alu    b = ((s8) p_31_24)+0x0;;
+0B30: 0x1DF33FE7   alu    b = b+0x1;;
+0B34: 0x3F33FFA9   alu    mac = b * ((u24) a);;
+0B38: 0xF35859C7   seq  if MacBusy==true then goto addr_0xB38, flush;;
+0B3C: 0x00087409   alu    p = macl+0x0;;
+0B40: 0x1F1E3FF7   alu    b = ertA+p;;
+0B44: 0x1F533FEF   alu    ertB = b+sr;;
+    	half_window_width = muliur(tooth_period, win_ratio_normal);
+0B48: 0xBFEFFB8A   ram   p_23_0 = *((channel int24 *) 0x29);;
+0B4C: 0x2F19FFE9   alu    mac = a * ((u24) p);;
+0B50: 0xF3585A87   seq  if MacBusy==true then goto addr_0xB50, flush;;
+0B54: 0x00071409   alu    sr = mach+0x0;;
+    	erta = erta + tooth_period - half_window_width;
+0B58: 0x1F3E3FF7   alu    b = ertA+a;;
+    	channel.MRLA = MRL_CLEAR;
+    	channel.MRLB = MRL_CLEAR;
+    	channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+    	channel.TDL = TDL_CLEAR;  /* clear noise transition, if any */
+0B5C: 0x6C432E0F   alu    ertA = b-sr;
+    :              chan  clear TransitionDetectionLatches, clear MatchRecognitionLatchA, matchA = ertA, set MatchEnableLatchA, clear MatchRecognitionLatchB,
+    :                    matchB = ertB, set MatchEnableLatchB;
+    :              seq   end;;
+    }
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: WindowCloseAt_NoReturn
+    *  DESCRIPTION: Open transition acceptance window immediately and
+    *    close it at close_tcr1_time, and end the thread.
+    *******************************************************************************/
+    _eTPU_fragment CRANK::WindowCloseAt_NoReturn(
+    	register_a uint24_t close_tcr1_time)
+    {
+    	erta = tcr1;
+    	ertb = close_tcr1_time;
+    	channel.MRLA = MRL_CLEAR;
+    	channel.MRLB = MRL_CLEAR;
+    	channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+0B60: 0x6FFC2E1F   alu    ertA = tcr1+0x0;
+    :              chan  clear MatchRecognitionLatchA, matchA = ertA, set MatchEnableLatchA, clear MatchRecognitionLatchB, matchB = ertB, set MatchEnableLatchB;
+    :              seq   end;;
+    }
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: WindowClose_NoReturn
+    *  DESCRIPTION: Open transition acceptance window immediately and close using
+    *    win_ratio and tooth_period, and end the thread.
+    *******************************************************************************/
+    _eTPU_fragment CRANK::WindowClose_NoReturn(
+    	register_a fract24_t win_ratio,
+    	register_d uint24_t tooth_period)
+0B64: 0xBFEFFB8A   ram   p_23_0 = *((channel int24 *) 0x29);;
+0B68: 0x14083F96   alu    b = (p+0x0) >> 1;;
+    {
+    	uint24_t half_window_width;
+    
+    	half_window_width = muliur(tooth_period, win_ratio);
+0B6C: 0x10037F8E   alu    p = (b+0x0) << 1;;
+0B70: 0x2F14FFE9   alu    mac = d * ((u24) p);;
+0B74: 0xF3585BA7   seq  if MacBusy==true then goto addr_0xB74, flush;;
+0B78: 0x00071409   alu    sr = mach+0x0;;
+    	ertb = erta + tooth_period + half_window_width;
+0B7C: 0x00047419   alu    p = d+0x0;;
+0B80: 0x1F1E3FF7   alu    b = ertA+p;;
+0B84: 0x1F533FEF   alu    ertB = b+sr;;
+    	erta = tcr1;
+    	channel.MRLA = MRL_CLEAR;
+    	channel.MRLB = MRL_CLEAR;
+    	channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+0B88: 0x6FFC2E1F   alu    ertA = tcr1+0x0;
+    :              chan  clear MatchRecognitionLatchA, matchA = ertA, set MatchEnableLatchA, clear MatchRecognitionLatchB, matchB = ertB, set MatchEnableLatchB;
+    :              seq   end;;
+    }
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: Stall_NoReturn
+    *  DESCRIPTION: Revert to FIRST_TRANS, signal other functions that Crank has
+    *    stalled.
+    *******************************************************************************/
+    _eTPU_fragment CRANK::Stall_NoReturn(void)
+    {
+    	/* set error */
+    	error |= CRANK_ERR_STALL;
+0B8C: 0xCFEF3989   ram   p_31_24 = *((channel int8 *) 0x24);
+    :              chan  set SvcdChan ChannelIntr;;
+0B90: 0x0C22AB82   alu    p_31_24 = p_31_24 | 0x8;;
+0B94: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    	/* set state */
+    	state = CRANK_FIRST_TRANS;
+0B98: 0x000FA479   alu    p_31_24 = ((u24) 0)+0x3;;
+0B9C: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    	/* set global eng_pos state and channel interrupt */
+    	eng_pos_state = ENG_POS_SEEK;
+0BA0: 0x000FA419   alu    p_31_24 = ((u24) 0)+0x0;;
+0BA4: 0xCFFFF100   ram   *((global int8 *) 0x0) = p_31_24;;
+    	/* Channel interrupt */
+    	channel.CIRC = CIRC_INT_FROM_SERVICED;
+    	/* signal other functions that crank restarts */
+    	Link4(link_1);
+0BA8: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+0BAC: 0xCFEFF890   ram   p_31_0 = *((channel int32 *) 0x40);;
+    	Link4(link_2);
+0BB0: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+0BB4: 0xCFEFF891   ram   p_31_0 = *((channel int32 *) 0x44);;
+    	Link4(link_3);
+0BB8: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+0BBC: 0xCFEFF892   ram   p_31_0 = *((channel int32 *) 0x48);;
+    	Link4(link_4);
+0BC0: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+0BC4: 0xCFEFF893   ram   p_31_0 = *((channel int32 *) 0x4C);;
+    	/* set default values */
+    	eng_trr_norm = trr = 0xffffff;
+0BC8: 0x9EEF0B00   alu    a = ((u24) 0)+0xFFFFFF;
+    :              ram   p_23_0 = *((global int24 *) 0x1);;
+0BCC: 0x0009E419   alu    TickRate = a+0x0;;
+0BD0: 0x9FF94F02   alu    diob = a+0x0;
+    :              ram   *((global int24 *) 0x9) = diob;;
+    	tpr = 0;
+0BD4: 0x000F2411   alu    ToothProgram = ((u24) 0)+0x0;;
+    	/* reset TCR2 if it is in a range that could cause immediate macthes to occur when
+    	   dependent channels (fuel, spark, etc.) re-initialize, otherwise it will be reset 
+    	   in CRANK_FIRST_TRANS to prevent short spurious outputs between now and dependent
+    	   channel re-initialization. */
+    	if ((unsigned int24)tcr2 < 0x800000U + 2*eng_cycle_tcr2_ticks)
+0BD8: 0x1C08078A   alu    a = (p+0x0) << 1;;
+0BDC: 0x1CF90FFF   alu    a = a+0x800000;;
+0BE0: 0x1C3DFEFF   alu    nil = tcr2-a, SampleFlags;;
+    	{
+    		tcr2 = 0;
+0BE4: 0x1C0F9502   alu    if  cFlag then tcr2 = ((u24) 0)+0x0;;
+    	}
+    	eng_cycle_tcr2_start = eng_cycle_tcr2_ticks;
+0BE8: 0x9FFC2B01   alu    ertA = tcr1+0x0;
+    :              ram   *((global int24 *) 0x5) = p_23_0;;
+    	tooth_counter_gap = 0;
+0BEC: 0xDFFF1905   ram   *((channel int8 *) 0x14) =  0;
+    :              chan  clear MatchRecognitionLatchA, matchA = ertA, set MatchEnableLatchA, clear MatchRecognitionLatchB;;
+    	tooth_counter_cycle = 0;
+0BF0: 0xCFFFF906   ram   *((channel int8 *) 0x18) =  0;;
+    	last_tooth_tcr1_time = 0;
+0BF4: 0xBFFFFB03   ram   *((channel int24 *) 0xD) =  0;;
+    	last_tooth_period = 0;
+0BF8: 0xBFFFFB04   ram   *((channel int24 *) 0x11) =  0;;
+    	last_tooth_period_norm = 0;
+0BFC: 0xAFFFFB05   ram   *((channel int24 *) 0x15) =  0;
+    :              seq   end;;
+    	/* open the acceptance window immediately and do not close it */
+    	erta = tcr1;
+    	channel.MRLA = MRL_CLEAR;
+    	channel.MRLB = MRL_CLEAR;
+    	channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    }
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: ToothArray_Log
+    *  DESCRIPTION: If enabled (FM1 set) log tooth_period 
+    *    into the tooth_period_log array at position [tooth_counter_cycle-1].
+    *******************************************************************************/
+    void CRANK::ToothArray_Log(
+    	register_a uint24_t tooth_period)
+    {
+    	uint24_t *ptr;
+    
+    	if(cc.FM1 == CRANK_FM1_LOG_TOOTH_PERIODS)
+0C00: 0xF39060E7   seq  if FunctionMode1==false then goto addr_0xC1C, flush;;
+    	{
+    		ptr = tooth_period_log + (tooth_counter_cycle - 1);
+0C04: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+0C08: 0x1EF23FF7   alu    b = p_31_24-0x0-1;;
+0C0C: 0x2F933FF9   alu    b = b << 2;;
+0C10: 0xBFEFFB94   ram   p_23_0 = *((channel int24 *) 0x51);;
+0C14: 0x1F134FEF   alu    diob = b+p;;
+    		*ptr = tooth_period;
+0C18: 0x1FF97BDF   alu    p = a+0x0;
+    :              ram   *((int24 *) diob) = p_23_0;;
+    	}
+    }
+0C1C: 0xFFDFCEF9   seq  return, flush;;
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: Set_TRR
+    *  DESCRIPTION: Calculates the tick rate and sets the Tick Rate Register (TRR).
+    *******************************************************************************/
+    void CRANK::Set_TRR(
+    	register_a uint24_t tooth_period_norm)
+    {
+    	register_mach uint24_t mach; /* MAC High register (keeps reminder after division */
+        int24_t tmp = 0;
+0C20: 0x000F1419   alu    sr = ((u24) 0)+0x0;;
+    
+        /* calculate and apply acceleration compensation */
+        if (trr != 0xffffff)
+0C24: 0x1FFFFFFC   alu    diob = ((u24) 0)+0xFFFFFF;;
+0C28: 0x1C74FEEF   alu    nil = TickRate-diob, SampleFlags;;
+0C2C: 0xF0D86247   seq  if z==true then goto addr_0xC48, flush;;
+        {
+            /* calculate the acceleration */
+            tmp = tooth_period_norm - last_last_tooth_period_norm;
+0C30: 0xBFEFFB86   ram   p_23_0 = *((channel int24 *) 0x19);;
+0C34: 0x1C191FFF   alu    sr = a-p;;
+            /* dampen the adjustment by 25% */
+            tmp = mulir(tmp, 0.75);
+0C38: 0x00060418   alu    diob = ((u24) 0)+0x600000;;
+0C3C: 0x2F7AFFE8   alu    mac = sr * ((s24) diob);;
+0C40: 0xF3586207   seq  if MacBusy==true then goto addr_0xC40, flush;;
+0C44: 0x10071F8E   alu    sr = (mach+0x0) << 1;;
+        }
+        last_last_tooth_period_norm = tooth_period_norm;
+0C48: 0xBFF97B86   alu    p = a+0x0;
+    :              ram   *((channel int24 *) 0x19) = p_23_0;;
+    
+        eng_trr_norm = (((tooth_period_norm + tmp)/tcr2_ticks_per_tooth) << TRR_FRACTIONAL_BITS); /* integer part of TRR */
+0C4C: 0x1F593FF7   alu    b = a+sr;;
+0C50: 0xB1EF7F81   alu    p = ((u24) 0)+0x2;
+    :              ram   diob = *((channel int24 *) 0x5);;
+0C54: 0x3F73FFAE   alu    mac = b / ((u24) diob);;
+0C58: 0xF35862C7   seq  if MacBusy==true then goto addr_0xC58, flush;;
+0C5C: 0x3F183F99   alu    b = macl << (2^^(p+1));;
+0C60: 0x93D34F02   alu    diob = (b+0x0) << 1;
+    :              ram   *((global int24 *) 0x9) = diob;;
+        eng_trr_norm += (mach << TRR_FRACTIONAL_BITS)/tcr2_ticks_per_tooth;                       /* fractional part of TRR */
+0C64: 0x3F173F99   alu    b = mach << (2^^(p+1));;
+0C68: 0xB3833F81   alu    b = (b+0x0) << 1;
+    :              ram   diob = *((channel int24 *) 0x5);;
+0C6C: 0x3F73FFAE   alu    mac = b / ((u24) diob);;
+0C70: 0xF3586387   seq  if MacBusy==true then goto addr_0xC70, flush;;
+0C74: 0x9FEFFB02   ram   p_23_0 = *((global int24 *) 0x9);;
+0C78: 0x1F187FEF   alu    p = macl+p;;
+0C7C: 0x9FFFFB02   ram   *((global int24 *) 0x9) = p_23_0;;
+        if (tcr1_clock_source_div1)
+0C80: 0xCFEFF980   ram   p_31_24 = *((channel int8 *) 0x0);;
+0C84: 0x0002A019   alu    p_31_24 = p_31_24+0x0, SampleFlags;;
+0C88: 0xF0F864C7   seq  if z==true then goto addr_0xC98, no_flush;;
+0C8C: 0x0008E419   alu    TickRate = p+0x0;;
+        {
+            /* if the TCR1 clock source is the full eTPU clock, the tooth period input
+               to the TRR calculation needs to be compensated by dividing by 2 */
+            trr = eng_trr_norm >> 1;
+        }
+0C90: 0xFFFFCEF9   seq  return, no_flush;;
+0C94: 0x1408EF9E   alu    TickRate = (p+0x0) >> 1;;
+        else
+        {
+            trr = eng_trr_norm;
+        }
+    }
+0C98: 0xFFDFCEF9   seq  return, flush;;
+    
+    
+    /*******************************************************************************
+    *  eTPU Function
+    *******************************************************************************/
+    
+    /**************************************************************************
+    * THREAD NAME: INIT
+    * DESCRIPTION: Initialize the channel to run the CRANK function.
+    **************************************************************************/
+    _eTPU_thread CRANK::INIT(_eTPU_matches_disabled)
+    {
+    	/* Stop the channel */
+    	/* Disable event handling */
+    	channel.MTD = MTD_DISABLE;
+0C9C: 0xFB77FEFB   chan  clear TransitionDetectionLatches, clear MatchEnableLatches, DisableMatchTransitionServicing;;
+    	/* Disable match detection */
+    	channel.MRLE = MRLE_DISABLE;
+    	/* Reset all latches */
+    	channel.TDL = TDL_CLEAR;
+    	channel.LSR = LSR_CLEAR;
+    	channel.MRLA = MRL_CLEAR;
+    	channel.MRLB = MRL_CLEAR;
+    
+    	/* Initialize the channel */
+    	/* Set channel mode: mach2 ordered single transition */
+    	channel.PDCM = PDCM_M2_O_ST;
+    	/* Time base selection */
+    	channel.TBSA = TBS_M1C1GE;  /* capture time to erta*/
+    	channel.TBSB = TBS_M1C2GE;  /* capture angle to ertb */
+    	/* Input pin action control */
+    	channel.IPACA = IPAC_FALLING;
+    	channel.IPACB = IPAC_NO_DETECT;
+    	if(cc.FM0 == CRANK_FM0_USE_TRANS_RISING)
+0CA0: 0xF3F06567   seq  if FunctionMode0==false then goto addr_0xCAC, no_flush;;
+0CA4: 0x5A1026B1   chan  clear MatchRecognitionLatchA, clear MatchRecognitionLatchB, ActionUnitA: tcr1 >= match, capture tcr1, ActionUnitB: tcr1 >= match, capture tcr2,
+    :                    clear LinkServiceRequest, mode = ordered matchA then matchB single transition, detectA = falling input pin edge, detectB = off;;
+    	{
+    		channel.IPACA = IPAC_RISING;
+0CA8: 0x59FFFFFF   chan  detectA = rising input pin edge;;
+    	}
+    	/* Output pin action control */
+    	channel.OPACA = OPAC_NO_CHANGE;
+0CAC: 0x481FFFFF   chan  FutureOutputPin no change on matchA, FutureOutputPin no change on matchB;;
+    	channel.OPACB = OPAC_NO_CHANGE;
+    
+    	/* Channel flags */
+    	channel.FLAG0 = CRANK_FLAG0_GAP;
+0CB0: 0x0C02AA1E   alu    p_31_24 = p_31_24+0x0, SampleFlags;
+    :              chan  clear ChannelFlag0;;
+    	if(teeth_in_gap == 0)
+0CB4: 0xF0D065E7   seq  if z==false then goto addr_0xCBC, flush;;
+    	{
+    		channel.FLAG0 = CRANK_FLAG0_ADDITIONAL_TOOTH;
+0CB8: 0x0FFFFEFE   chan  set ChannelFlag0;;
+    	}
+    
+    	/* Default values */
+    	trr = 0xffffff;
+0CBC: 0x1EFFEFFF   alu    TickRate = ((u24) 0)+0xFFFFFF;;
+    	tpr = 0;
+0CC0: 0x000F2411   alu    ToothProgram = ((u24) 0)+0x0;;
+    	if((int24_t)tcr2 > 0)	tcr2 = 0;
+0CC4: 0x000D1419   alu    sr = tcr2+0x0;;
+0CC8: 0x1C5FFEFF   alu    nil = ((u24) 0)-sr, SampleFlags;;
+0CCC: 0xF49066A7   seq  if LessThan==false then goto addr_0xCD4, flush;;
+0CD0: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    	eng_pos_state = ENG_POS_SEEK;
+0CD4: 0x000FA419   alu    p_31_24 = ((u24) 0)+0x0;;
+0CD8: 0xCFFFF100   ram   *((global int8 *) 0x0) = p_31_24;;
+    	eng_cycle_tcr2_start = eng_cycle_tcr2_ticks;
+0CDC: 0x9DEC2F00   alu    ertA = tcr1+0x1;
+    :              ram   diob = *((global int24 *) 0x1);;
+0CE0: 0xDF3FB601   ram   *((global int24 *) 0x5) = diob;
+    :              chan  matchA = ertA, set MatchEnableLatchA, EnableMatchTransitionServicing;;
+    	state = CRANK_SEEK;
+0CE4: 0xC7FFF908   ram   *((channel int8 *) 0x20) =  0;
+    :              seq   end;;
+    
+    	/* Schedule Match A to open window */
+    	erta = tcr1 + 1; /* the +1 means that the window won't open until the
+    	                    timebase has been started */
+    	channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    
+    	/* Enable event handling */
+    	channel.MTD = MTD_ENABLE;
+    }
+    
+    /**************************************************************************
+    * THREAD NAME: ANGLE_ADJUST
+    * DESCRIPTION: Update TCR2 value, set ENG_POS_FULL_SYNC.
+    **************************************************************************/
+    _eTPU_thread CRANK::ANGLE_ADJUST(_eTPU_matches_disabled)
+    {
+    	tcr2 += tcr2_adjustment;
+0CE8: 0xBFEFFB88   ram   p_23_0 = *((channel int24 *) 0x21);;
+0CEC: 0x1F1D9FFF   alu    tcr2 = tcr2+p;;
+    #ifdef ERRATA_2477
+    	err2477_tcr2_target += tcr2_adjustment;
+    #endif
+    	/* set global eng_pos state */
+    	eng_pos_state = ENG_POS_FULL_SYNC;
+0CF0: 0x000FA479   alu    p_31_24 = ((u24) 0)+0x3;;
+0CF4: 0xCFFFF100   ram   *((global int8 *) 0x0) = p_31_24;;
+    
+    	/* signal other functions that crank has reached full sync */
+    	Link4(link_1);
+0CF8: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+0CFC: 0xCFEFF890   ram   p_31_0 = *((channel int32 *) 0x40);;
+    	Link4(link_2);
+0D00: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+0D04: 0xCFEFF891   ram   p_31_0 = *((channel int32 *) 0x44);;
+    	Link4(link_3);
+0D08: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+0D0C: 0xCFEFF892   ram   p_31_0 = *((channel int32 *) 0x48);;
+    	Link4(link_4);
+0D10: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+0D14: 0xCFEFF893   ram   p_31_0 = *((channel int32 *) 0x4C);;
+    }
+0D18: 0x0FFFFFFF   seq   end;;
+    
+    /**************************************************************************
+    * THREAD NAME: CRANK_WITH_GAP
+    * DESCRIPTION: A transition or a timeout, handling a crank wheel with gap.
+    **************************************************************************/
+    _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
+    {
+    	uint24_t   tooth_period;
+    	uint24_t   half_window_width;
+    	uint8_t  tmp;
+    	
+    	if(cc.TDLA == 1)
+0D1C: 0xF2108947   seq  if SampledTransitionDetectionLatchA==false then goto addr_0x1128, flush;;
+    	{
+    		/* A tooth transition detected */
+    		channel.TDL = TDL_CLEAR;
+0D20: 0xDFE7F988   ram   p_31_24 = *((channel int8 *) 0x20);
+    :              chan  clear TransitionDetectionLatches;;
+    		switch(state)
+0D24: 0x13D2F782   alu    nil = p_31_24+0xF4, SampleFlags8;;
+0D28: 0xF09888C7   seq  if cFlag==true then goto addr_0x1118, flush;;
+0D2C: 0xFFDFDEF9   seq  goto ProgramCounter + p_31_24, flush;;
+0D30: 0xF7C06B08   ram   p_23_0 = *((channel int24 *) 0x1);
+    :              seq  goto addr_0xD60, flush;;
+0D34: 0xF7D08867   seq  goto addr_0x110C, flush;;
+0D38: 0xF7D06BC7   seq  goto addr_0xD78, flush;;
+0D3C: 0xF7D06CE7   seq  goto addr_0xD9C, flush;;
+0D40: 0xF7D06DC7   seq  goto addr_0xDB8, flush;;
+0D44: 0xF7D07027   seq  goto addr_0xE04, flush;;
+0D48: 0xF7C0730C   ram   p_23_0 = *((channel int24 *) 0x11);
+    :              seq  goto addr_0xE60, flush;;
+0D4C: 0xF7D077C7   seq  goto addr_0xEF8, flush;;
+0D50: 0xF7D07787   seq  goto addr_0xEF0, flush;;
+0D54: 0xF7D07AC7   seq  goto addr_0xF58, flush;;
+0D58: 0xF7D08867   seq  goto addr_0x110C, flush;;
+0D5C: 0xF7D07D47   seq  goto addr_0xFA8, flush;;
+    		{
+    		case CRANK_SEEK:
+    			/**************************************************************
+    			* STATE: T0 - SEEK
+    			* DESCRIPTION: 
+    			*   First transition after INIT was detected.
+    			*   Wait for blank_time without detecting transitions.
+    			**************************************************************/
+    			tcr2 = 0;
+0D60: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			/* set_state */
+    			state = CRANK_BLANK_TIME;
+0D64: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+0D68: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* do not detect transitions */
+    			channel.IPACA = IPAC_NO_DETECT;
+0D6C: 0x58FFFFFF   chan  detectA = off;;
+    			/* keep window opened, close window after blank_time */
+    			WindowCloseAt_NoReturn(erta + blank_time);
+0D70: 0xF7F05B07   seq  goto addr_0xB60, no_flush;;
+0D74: 0x1F1E3FFF   alu    ertB = ertA+p;;
+    			break;
+    
+    		case CRANK_BLANK_TEETH:
+    			/**************************************************************
+    			* STATE: T2 - BLANK_TEETH
+    			* DESCRIPTION: 
+    			*   Count down blank_teeth without tooth period measurement.
+    			**************************************************************/
+    			tcr2 = 0;
+0D78: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			/* Count down blank_teeth */
+    			if(--blank_teeth <= 0)
+0D7C: 0xCFEFF987   ram   p_31_24 = *((channel int8 *) 0x1C);;
+0D80: 0x1EF20FFF   alu    a = p_31_24-0x0-1;;
+0D84: 0x0009A419   alu    p_31_24 = a+0x0;;
+0D88: 0xCFFFF987   ram   *((channel int8 *) 0x1C) = p_31_24;;
+0D8C: 0x0009A019   alu    p_31_24 = a+0x0, SampleFlags;;
+0D90: 0xF4D08927   seq  if LowerOrEqual==false then goto addr_0x1124, flush;;
+    			{
+    				/* set_state */
+    				state = CRANK_FIRST_TRANS;
+0D94: 0x000FA479   alu    p_31_24 = ((u24) 0)+0x3;;
+0D98: 0xC7FFF988   ram   *((channel int8 *) 0x20) = p_31_24;
+    :              seq   end;;
+    			}
+    			break;
+    
+    		case CRANK_FIRST_TRANS:
+    			/**************************************************************
+    			* STATE: T3 - FIRST_TRANS
+    			* DESCRIPTION: 
+    			*   First transition after blank_teeth was detected.
+    			*   Record transition time.
+    			*   Next transition is expected within first_tooth_timeout. 
+    			**************************************************************/
+    			tcr2 = 0;
+0D9C: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			/* set_state */
+    			state = CRANK_SECOND_TRANS;
+0DA0: 0x001FA419   alu    p_31_24 = ((u24) 0)+0x4;;
+0DA4: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* record last_tooth_tcr1_time */
+    			last_tooth_tcr1_time = erta;
+0DA8: 0xBFFE7B83   alu    p = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = p_23_0;;
+    			/* keep window opened, close window after first_tooth_timeout */
+    			WindowCloseAt_NoReturn(erta + first_tooth_timeout);
+0DAC: 0xBFEFFB8E   ram   p_23_0 = *((channel int24 *) 0x39);;
+0DB0: 0xF7F05B07   seq  goto addr_0xB60, no_flush;;
+0DB4: 0x1F1E3FFF   alu    ertB = ertA+p;;
+    			break;
+    
+    		case CRANK_SECOND_TRANS:
+    			/**************************************************************
+    			* STATE: T4 - SECOND_TRANS
+    			* DESCRIPTION: 
+    			*   Second transition after blank_teeth was detected.
+    			*   Calculate tooth period and record transition time.
+    			*   Next transition is expected within a long timeout over 
+    			*   a possible gap. 
+    			**************************************************************/
+    			tcr2 = 0;
+0DB8: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			/* set_state */
+    			state = CRANK_TEST_POSSIBLE_GAP;
+0DBC: 0x001FA439   alu    p_31_24 = ((u24) 0)+0x5;;
+0DC0: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* record last_tooth_period and last_tooth_tcr1_time */
+    			tooth_period = erta - last_tooth_tcr1_time;
+0DC4: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			last_tooth_tcr1_time = erta;
+0DC8: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			last_tooth_period = tooth_period;
+0DCC: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    			/* keep window opened, have to assume gap is next - close window after
+    			   a long timeout over a possible gap */
+    			half_window_width = muliur(tooth_period, win_ratio_across_gap);
+0DD0: 0xBFEFFB8B   ram   p_23_0 = *((channel int24 *) 0x2D);;
+0DD4: 0x2F14FFE9   alu    mac = d * ((u24) p);;
+0DD8: 0xF3586EC7   seq  if MacBusy==true then goto addr_0xDD8, flush;;
+0DDC: 0x00070401   alu    cReg = mach+0x0;;
+    			WindowCloseAt_NoReturn(erta +
+    				(tooth_period*(teeth_in_gap + 1U)) + half_window_width);
+0DE0: 0xCFEFF982   ram   p_31_24 = *((channel int8 *) 0x8);;
+0DE4: 0x3FF20874   alu    a = ((s8) p_31_24)+0x0;;
+0DE8: 0x00090439   alu    a = a+0x1;;
+0DEC: 0x2F34FFE9   alu    mac = d * ((u24) a);;
+0DF0: 0xF3586F87   seq  if MacBusy==true then goto addr_0xDF0, flush;;
+0DF4: 0x00080409   alu    a = macl+0x0;;
+0DF8: 0x1F3E0FFF   alu    a = ertA+a;;
+0DFC: 0xF7F05B07   seq  goto addr_0xB60, no_flush;;
+0E00: 0x1F313FEF   alu    ertB = cReg+a;;
+    			break;
+    
+    		case CRANK_TEST_POSSIBLE_GAP:
+    			/**************************************************************
+    			* STATE: T5 - TEST_POSSIBLE_GAP
+    			* DESCRIPTION: 
+    			*   Transition detected, no synchronization yet.
+    			*   Calculate tooth period and record transition time.
+    			*   Test for a possible gap (AB of ABA test).
+    			*   If possible gap found, expect next transition in window 
+    			*     across gap.
+    			*   Else, expect next transition within a long timeout over 
+    			*     a possible gap.
+    			**************************************************************/
+    			tcr2 = 0;
+0E04: 0xBFEF9B89   alu    tcr2 = ((u24) 0)+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x25);;
+    			/* calc tooth_period and record last_tooth_tcr1_time */
+    			tooth_period = erta - last_tooth_tcr1_time;
+0E08: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			last_tooth_tcr1_time = erta;
+0E0C: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			/* test for a possible gap (AB test) */
+    			if(muliur(tooth_period, gap_ratio)
+    			   > last_tooth_period)
+0E10: 0x2F14FFE9   alu    mac = d * ((u24) p);;
+0E14: 0xF34870AC   ram   p_23_0 = *((channel int24 *) 0x11);
+    :              seq  if MacBusy==true then goto addr_0xE14, flush;;
+0E18: 0x00070409   alu    a = mach+0x0;;
+0E1C: 0x1C38FEFF   alu    nil = p-a, SampleFlags;;
+0E20: 0xF0B072C7   seq  if cFlag==false then goto addr_0xE58, no_flush;;
+0E24: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    			{ /* a possible gap found */
+    				/* record last_tooth_period */
+    				last_tooth_period = tooth_period;
+    				/* calculate an average tooth_period within the gap */
+    				last_tooth_period_norm = tooth_period/(teeth_in_gap + 1U);
+0E28: 0xCFEFF982   ram   p_31_24 = *((channel int8 *) 0x8);;
+0E2C: 0x3FF20874   alu    a = ((s8) p_31_24)+0x0;;
+0E30: 0x00090439   alu    a = a+0x1;;
+0E34: 0x2F34FFEE   alu    mac = d / ((u24) a);;
+0E38: 0xF35871C7   seq  if MacBusy==true then goto addr_0xE38, flush;;
+0E3C: 0xBFD87B85   alu    p = macl+0x0;
+    :              ram   *((channel int24 *) 0x15) = p_23_0;;
+    				/* set state */
+    				state = CRANK_VERIFY_GAP;
+0E40: 0x001FA459   alu    p_31_24 = ((u24) 0)+0x6;;
+0E44: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    				/* open and close window using win_ratio_after_gap */
+    				Window_NoReturn(win_ratio_after_gap,
+    				                      last_tooth_period_norm);
+0E48: 0xBFEFFB8C   ram   p_23_0 = *((channel int24 *) 0x31);;
+0E4C: 0xB7A83B85   alu    b = (p+0x0) >> 1;
+    :              ram   p_23_0 = *((channel int24 *) 0x15);;
+0E50: 0xF7F057A7   seq  goto addr_0xAF4, no_flush;;
+0E54: 0x00085411   alu    d = p+0x0;;
+    			}
+    			else
+    			{ /* gap not found */
+    				/* record last_tooth_period */
+    				last_tooth_period = tooth_period;
+    				last_tooth_period_norm = tooth_period;
+    				/* open and close window, have to assume the gap is next */
+    				WindowAcrossGap_NoReturn(tooth_period);
+0E58: 0xF7F058CD   ram   *((channel int24 *) 0x15) = p_23_0;
+    :              seq  goto addr_0xB18, no_flush;;
+0E5C: 0x00040419   alu    a = d+0x0;;
+    			}
+    			break;
+    
+    		case CRANK_VERIFY_GAP:
+    			/**************************************************************
+    			* STATE: T6 - VERIFY_GAP
+    			* DESCRIPTION: 
+    			*   Transition detected in window across gap, first sync.
+    			*   Calculate tooth period and record transition time.
+    			*   Verify a possible gap (BA of ABA test).
+    			*   If gap verified, this is the second tooth after gap,
+    			*     start TCR2, set ENG_POS_FIRST_HALF_SYNC and IRQ,
+    			*     reset Cam log, expect next transition in normal window. 
+    			*   Else, test possible gap again, expect next transition  
+    			*     within a long timeout over a possible gap.
+    			**************************************************************/
+    			/* calc tooth_period and record last_tooth_tcr1_time */
+    			tooth_period = erta - last_tooth_tcr1_time;
+0E60: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			last_tooth_tcr1_time = erta;
+0E64: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			/* verify a possible gap (BA portion of the ABA test) */
+    			if(muliur(last_tooth_period, gap_ratio)
+    			   > tooth_period)
+0E68: 0xBFE80B89   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x25);;
+0E6C: 0x2F19FFE9   alu    mac = a * ((u24) p);;
+0E70: 0xF3587387   seq  if MacBusy==true then goto addr_0xE70, flush;;
+0E74: 0x00070409   alu    a = mach+0x0;;
+0E78: 0x1C34FEFF   alu    nil = d-a, SampleFlags;;
+0E7C: 0xF09076E7   seq  if cFlag==false then goto addr_0xEDC, flush;;
+    			{ /* gap verified */
+    				/* set states */
+    				state = CRANK_COUNTING;
+0E80: 0x001FA479   alu    p_31_24 = ((u24) 0)+0x7;;
+0E84: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    				/* record last_tooth_period */
+    				last_tooth_period = tooth_period;
+0E88: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    				last_tooth_period_norm = tooth_period;
+0E8C: 0xB1FFAB85   alu    p_31_24 = ((u24) 0)+0x2;
+    :              ram   *((channel int24 *) 0x15) = p_23_0;;
+    				/* set tooth counters - second tooth after gap */
+    				tooth_counter_cycle = 2;
+0E90: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    				//tooth_counter_gap = 2;
+    				tooth_counter_gap = 1;
+    				tooth_counter_gap++;
+0E94: 0xCFFFF985   ram   *((channel int8 *) 0x14) = p_31_24;;
+    				/* set TRR and TICKS */
+    				tpr_str.TICKS = (uint16_t)tcr2_ticks_per_tooth - 1;
+0E98: 0xBFEFFF81   ram   diob = *((channel int24 *) 0x5);;
+0E9C: 0x1EFB0FFF   alu    a = diob-0x0-1;;
+0EA0: 0x03F004FC   alu    diob = ((u24) 0)+0x3FF;;
+0EA4: 0x2F791FF2   alu    sr = a & diob;;
+0EA8: 0x1C000F18   alu    diob = ((u24) 0)+0xFC00;;
+0EAC: 0x3F724FB2   alu    diob = ToothProgram & diob;;
+0EB0: 0x3F5B2FD0   alu    ToothProgram = diob | sr;;
+    				Set_TRR(tooth_period);
+0EB4: 0xFFF06107   seq  call addr_0xC20, no_flush;;
+0EB8: 0x00040419   alu    a = d+0x0;;
+    				tcr2 = tcr2_ticks_per_tooth;
+0EBC: 0x000B9419   alu    tcr2 = diob+0x0;;
+    #ifdef ERRATA_2477
+    				err2477_tcr2_target = tcr2_ticks_per_tooth;
+    #endif
+    				/* set global eng_pos state and channel interrupt */
+    				eng_pos_state = ENG_POS_FIRST_HALF_SYNC;
+0EC0: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+0EC4: 0xCFFF3100   ram   *((global int8 *) 0x0) = p_31_24;
+    :              chan  set SvcdChan ChannelIntr;;
+    				channel.CIRC = CIRC_INT_FROM_SERVICED;
+    				/* reset Cam log */
+    				Link4(link_cam);
+0EC8: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+0ECC: 0xCFEFF88F   ram   p_31_0 = *((channel int32 *) 0x3C);;
+    				/* open and close window using win_ratio_normal */
+    				Window_NoReturn(win_ratio_normal, tooth_period);
+0ED0: 0xBFEFFB8A   ram   p_23_0 = *((channel int24 *) 0x29);;
+0ED4: 0xF7F057A7   seq  goto addr_0xAF4, no_flush;;
+0ED8: 0x14083F96   alu    b = (p+0x0) >> 1;;
+    			}
+    			else
+    			{ /* gap not verified */
+    				/* set state */
+    				state = CRANK_TEST_POSSIBLE_GAP;
+0EDC: 0x001FA439   alu    p_31_24 = ((u24) 0)+0x5;;
+0EE0: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    				/* record last_tooth_period */
+    				last_tooth_period = tooth_period;
+0EE4: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    				last_tooth_period_norm = tooth_period;
+    				/* open and close window, have to assume the gap is next */
+    				WindowAcrossGap_NoReturn(tooth_period);
+0EE8: 0xF7F058CD   ram   *((channel int24 *) 0x15) = p_23_0;
+    :              seq  goto addr_0xB18, no_flush;;
+0EEC: 0x00040419   alu    a = d+0x0;;
+    			}
+    			break;
+    
+    		case CRANK_COUNTING_TIMEOUT:
+    			/**************************************************************
+    			* STATE: T8 - COUNTING_TIMEOUT
+    			* DESCRIPTION: 
+    			*   Transition detected within window after a single timeout.
+    			*   Recover and continue normal counting.
+    			**************************************************************/
+    			/* recover from counting timeout */
+    			/* set state */
+    			state = CRANK_COUNTING;
+0EF0: 0x001FA479   alu    p_31_24 = ((u24) 0)+0x7;;
+0EF4: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* continue to normal processing at CRANK_COUNTING */
+    
+    		case CRANK_COUNTING:
+    			/**************************************************************
+    			* STATE: T7 - COUNTING
+    			* DESCRIPTION: 
+    			*   Transition detected in normal window.
+    			*   Calculate tooth period and record transition time.
+    			*   Increment tooth counters.
+    			*   Check if the next tooth is the last before gap.
+    			*   Adjust TCR2 rate.
+    			*   Expect next transition in normal window. 
+    			**************************************************************/
+    			/* record last_tooth_period and last_tooth_tcr1_time */
+    			tooth_period = erta - last_tooth_tcr1_time;
+0EF8: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			last_tooth_tcr1_time = erta;
+0EFC: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			last_tooth_period = tooth_period;
+0F00: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    			last_tooth_period_norm = tooth_period;
+0F04: 0xBFFFFB85   ram   *((channel int24 *) 0x15) = p_23_0;;
+    			/* increment tooth counters */
+    			tooth_counter_gap++;
+0F08: 0xCFEFF985   ram   p_31_24 = *((channel int8 *) 0x14);;
+0F0C: 0x0002A439   alu    p_31_24 = p_31_24+0x1;;
+0F10: 0xCFFFF985   ram   *((channel int8 *) 0x14) = p_31_24;;
+    			tooth_counter_cycle++;
+0F14: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+0F18: 0x0002A439   alu    p_31_24 = p_31_24+0x1;;
+0F1C: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    			/* test if before the gap */
+    			if(tooth_counter_gap == teeth_till_gap - 1)
+0F20: 0xCFEFF981   ram   p_31_24 = *((channel int8 *) 0x4);;
+0F24: 0x1EF20FFF   alu    a = p_31_24-0x0-1;;
+0F28: 0xCFEFF985   ram   p_31_24 = *((channel int8 *) 0x14);;
+0F2C: 0x1C32AEFF   alu    p_31_24 = p_31_24-a, SampleFlags;;
+0F30: 0xF0D079E7   seq  if z==false then goto addr_0xF3C, flush;;
+    			{
+    				/* there is one more teeth till the gap */
+    				state = CRANK_TOOTH_BEFORE_GAP;
+0F34: 0x002FA439   alu    p_31_24 = ((u24) 0)+0x9;;
+0F38: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			}
+    			/* set TRR */
+    			Set_TRR(tooth_period);
+0F3C: 0xFFF06107   seq  call addr_0xC20, no_flush;;
+0F40: 0x00040419   alu    a = d+0x0;;
+    #ifdef ERRATA_2477
+    			err2477_tcr2_target += tcr2_ticks_per_tooth;
+    #endif
+    			/* log tooth period */
+    			ToothArray_Log(tooth_period);
+0F44: 0xFFF06007   seq  call addr_0xC00, no_flush;;
+0F48: 0x00040419   alu    a = d+0x0;;
+    			/* open and close window using win_ratio_normal */
+    			Window_NoReturn(win_ratio_normal, tooth_period);
+0F4C: 0xBFEFFB8A   ram   p_23_0 = *((channel int24 *) 0x29);;
+0F50: 0xF7F057A7   seq  goto addr_0xAF4, no_flush;;
+0F54: 0x14083F96   alu    b = (p+0x0) >> 1;;
+    			break;
+    
+    		case CRANK_TOOTH_BEFORE_GAP:
+    			/**************************************************************
+    			* STATE: T9 - TOOTH_BEFORE_GAP
+    			* DESCRIPTION: 
+    			*   Transition detected in normal window, gap expected next.
+    			*   Calculate tooth period and record transition time.
+    			*   Increment tooth counters.
+    			*   Adjust TCR2 rate.
+    			*   Expect next transition within window across the gap. 
+    			**************************************************************/
+    			/* record last_tooth_period and last_tooth_tcr1_time */
+    			tooth_period = erta - last_tooth_tcr1_time;
+0F58: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			last_tooth_tcr1_time = erta;
+0F5C: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			last_tooth_period = tooth_period;
+0F60: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    			last_tooth_period_norm = tooth_period;
+0F64: 0xBFF40B85   alu    a = d+0x0;
+    :              ram   *((channel int24 *) 0x15) = p_23_0;;
+    			/* increment tooth counters */
+    			tooth_counter_gap++;
+0F68: 0xCFEFF985   ram   p_31_24 = *((channel int8 *) 0x14);;
+0F6C: 0x0002A439   alu    p_31_24 = p_31_24+0x1;;
+0F70: 0xCFFFF985   ram   *((channel int8 *) 0x14) = p_31_24;;
+    			tooth_counter_cycle++;
+0F74: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+0F78: 0x0002A439   alu    p_31_24 = p_31_24+0x1;;
+    			/* set TRR */
+    			Set_TRR(tooth_period);
+0F7C: 0xFFF06107   seq  call addr_0xC20, no_flush;;
+0F80: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    			/* log tooth period */
+    			ToothArray_Log(tooth_period);
+0F84: 0xFFF06007   seq  call addr_0xC00, no_flush;;
+0F88: 0x00040419   alu    a = d+0x0;;
+    #ifdef ERRATA_2477
+    			/* set state */
+    			state = CRANK_TOOTH_BEFORE_GAP_NOT_HRM;
+    			/* workaround for errata 2477
+    			 * a match is scheduled in angle so that the Angle Hardware is
+    			 * not in HRM */
+    			channel.TBSB = TBS_M2C2GE;
+    			/* open window immediately to enable match B
+    			   and schedule the match B for when the EAC will be out of HRM */
+    			CRANK_WindowCloseAt_NoReturn(err2477_tcr2_target);
+    #else
+    			/* set state */
+    			state = CRANK_TOOTH_AFTER_GAP;
+0F8C: 0x002FA479   alu    p_31_24 = ((u24) 0)+0xB;;
+0F90: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* write MISSCNT */
+    			tpr |= misscnt_mask;
+0F94: 0xCFEFF895   ram   p_31_0 = *((channel int32 *) 0x54);;
+0F98: 0x00060419   alu    a = p_31_16+0x0;;
+0F9C: 0x3F322F90   alu    ToothProgram = ToothProgram | a;;
+    			/* open and close window using win_ratio_normal
+    			   and win_ratio_across_gap */
+    			WindowAcrossGap_NoReturn(tooth_period);
+0FA0: 0xF7F058C7   seq  goto addr_0xB18, no_flush;;
+0FA4: 0x00040419   alu    a = d+0x0;;
+    #endif
+    			break;
+    
+    		case CRANK_TOOTH_AFTER_GAP:
+    			/**************************************************************
+    			* STATE: T11 - TOOTH_AFTER_GAP
+    			* DESCRIPTION: 
+    			*   Transition detected in window across gap.
+    			*   Calculate tooth period and record transition time.
+    			*   Verify the gap (AB of ABA test).
+    			*   If gap verified, adjust TCR2 rate and tooth counters,
+    			*     sync-cycle or engine-cycle is finished:
+    			*     In ENG_POS_FIRST_HALF_SYNC, 
+    			*       ask CPU to decode the Cam log, 
+    			*       reset TCR2, reset tooth_counter_cycle,
+    			*       set ENG_POS_PRE_FULL_SYNC and IRQ.
+    			*     In ENG_POS_PRE_FULL_SYNC, there was no response from CPU,
+    			*       reset Cam log, reset TCR2, reset tooth_counter_cycle,
+    			*       set ENG_POS_FIRST_HALF_SYNC and IRQ.
+    			*     In ENG_POS_FULL_SYNC,
+    			*       reset Cam log, reset tooth_counter_cycle, 
+    			*       set IRQ (once per cycle in full sync)
+    			*       increment eng_cycle_tcr2_start by one cycle
+    			*     Expect next transition in window after gap.
+    			*   Else, gap not verified, set CRANK_ERR_TOOTH_IN_GAP,
+    			*     set ENG_POS_SEEK and IRQ, signal output functions and
+    			*     restart searching for the gap  
+    			**************************************************************/
+    			/* calc tooth_period and record last_tooth_tcr1_time */
+    			tooth_period = erta - last_tooth_tcr1_time;
+0FA8: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			last_tooth_tcr1_time = erta;
+0FAC: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			/* verify gap (AB test) */
+    			if(muliur(tooth_period, gap_ratio)
+    			   > last_tooth_period)
+0FB0: 0xBFEFFB89   ram   p_23_0 = *((channel int24 *) 0x25);;
+0FB4: 0x2F14FFE9   alu    mac = d * ((u24) p);;
+0FB8: 0xF3487DCC   ram   p_23_0 = *((channel int24 *) 0x11);
+    :              seq  if MacBusy==true then goto addr_0xFB8, flush;;
+0FBC: 0x00070409   alu    a = mach+0x0;;
+0FC0: 0x1C38FEFF   alu    nil = p-a, SampleFlags;;
+0FC4: 0xF09087E7   seq  if cFlag==false then goto addr_0x10FC, flush;;
+    			{ /* gap verified */
+    				/* record last_tooth_period */
+    				last_tooth_period = tooth_period;
+0FC8: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    				/* calculate an average tooth_period within the gap */
+    				last_tooth_period_norm = tooth_period/(teeth_in_gap + 1U);
+0FCC: 0xCFEFF982   ram   p_31_24 = *((channel int8 *) 0x8);;
+0FD0: 0x3FF20874   alu    a = ((s8) p_31_24)+0x0;;
+0FD4: 0x00090439   alu    a = a+0x1;;
+0FD8: 0x2F34FFEE   alu    mac = d / ((u24) a);;
+0FDC: 0xF3587EE7   seq  if MacBusy==true then goto addr_0xFDC, flush;;
+0FE0: 0xBFD87B85   alu    p = macl+0x0;
+    :              ram   *((channel int24 *) 0x15) = p_23_0;;
+    				/* set TRR */
+    				Set_TRR(last_tooth_period_norm);
+0FE4: 0xFFF06107   seq  call addr_0xC20, no_flush;;
+0FE8: 0x00080419   alu    a = p+0x0;;
+    				/* set state - if the second tooth after the gap times out then
+    				   the state machine will revert to FIRST_TRANS */
+    				state = CRANK_COUNTING_TIMEOUT;
+0FEC: 0x002FA419   alu    p_31_24 = ((u24) 0)+0x8;;
+0FF0: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    				/* set tooth counters - first tooth after gap */
+    				tooth_counter_gap = 1;
+0FF4: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+0FF8: 0xCFFFF985   ram   *((channel int8 *) 0x14) = p_31_24;;
+    				tmp = tooth_counter_cycle + teeth_in_gap;
+0FFC: 0xCFEFF982   ram   p_31_24 = *((channel int8 *) 0x8);;
+1000: 0x00020419   alu    a = p_31_24+0x0;;
+1004: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+1008: 0x1F325FF7   alu    d = p_31_24+a;;
+    				while(++tooth_counter_cycle <= tmp)
+100C: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+1010: 0x00020439   alu    a = p_31_24+0x1;;
+1014: 0x0009A419   alu    p_31_24 = a+0x0;;
+1018: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+101C: 0x00041419   alu    sr = d+0x0;;
+1020: 0x1C59AEFF   alu    p_31_24 = a-sr, SampleFlags;;
+1024: 0xF4D081A7   seq  if LowerOrEqual==false then goto addr_0x1034, flush;;
+    				{
+    					/* log average tooth period for all teeth in gap */
+    					ToothArray_Log(last_tooth_period_norm);
+1028: 0xFFE0600D   ram   p_23_0 = *((channel int24 *) 0x15);
+    :              seq  call addr_0xC00, no_flush;;
+102C: 0x00080419   alu    a = p+0x0;;
+    				}
+1030: 0xF7D08067   seq  goto addr_0x100C, flush;;
+    #ifdef ERRATA_2477
+    				err2477_tcr2_target +=
+    				  (teeth_in_gap + 1U)*tcr2_ticks_per_tooth;
+    #endif
+    				/* when the sync-cycle or engine-cycle is finished */
+    				switch(eng_pos_state)
+1034: 0xCFEFF100   ram   p_31_24 = *((global int8 *) 0x0);;
+1038: 0x00020419   alu    a = p_31_24+0x0;;
+103C: 0x0809DBAA   alu    p_7_0 = a ^ 0x1, SampleFlags;;
+1040: 0xF0D882E7   seq  if z==true then goto addr_0x105C, flush;;
+1044: 0x0809DBCA   alu    p_7_0 = a ^ 0x2, SampleFlags;;
+1048: 0xF0D88447   seq  if z==true then goto addr_0x1088, flush;;
+104C: 0x0809DBEA   alu    p_7_0 = a ^ 0x3, SampleFlags;;
+1050: 0xF0F885E7   seq  if z==true then goto addr_0x10BC, no_flush;;
+1054: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+1058: 0xF7D08727   seq  goto addr_0x10E4, flush;;
+    				{
+    				case ENG_POS_FIRST_HALF_SYNC:
+    					/* if the sync cycle is finished */
+    					if(tooth_counter_cycle >= teeth_per_sync)
+105C: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+1060: 0x00020419   alu    a = p_31_24+0x0;;
+1064: 0xCFEFF984   ram   p_31_24 = *((channel int8 *) 0x10);;
+1068: 0x1C32AEFF   alu    p_31_24 = p_31_24-a, SampleFlags;;
+106C: 0xF4D08727   seq  if LowerOrEqual==false then goto addr_0x10E4, flush;;
+    					{ /* It is time to ask the CPU to decode which half-cycle it was */
+    						/* set global eng_pos state and channel interrupt */
+    						eng_pos_state = ENG_POS_PRE_FULL_SYNC;
+1070: 0x000FA459   alu    p_31_24 = ((u24) 0)+0x2;;
+1074: 0xCFFF3100   ram   *((global int8 *) 0x0) = p_31_24;
+    :              chan  set SvcdChan ChannelIntr;;
+    						channel.CIRC = CIRC_INT_FROM_SERVICED;
+    						/* reset tooth_counter_cycle */
+    						tooth_counter_cycle = 1;
+1078: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+107C: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    						/* reset TCR2 */
+    						tcr2 = 0;
+    #ifdef ERRATA_2477
+    						err2477_tcr2_target = 0;
+    #endif
+    					}
+    					break;
+1080: 0xF7F08727   seq  goto addr_0x10E4, no_flush;;
+1084: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    				case ENG_POS_PRE_FULL_SYNC:
+    					/* if the sync cycle is finished */
+    					if(tooth_counter_cycle >= teeth_per_sync)
+1088: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+108C: 0x00020419   alu    a = p_31_24+0x0;;
+1090: 0xCFEFF984   ram   p_31_24 = *((channel int8 *) 0x10);;
+1094: 0x1C32AEFF   alu    p_31_24 = p_31_24-a, SampleFlags;;
+1098: 0xF4D08727   seq  if LowerOrEqual==false then goto addr_0x10E4, flush;;
+    					{ /* no answer from the CPU has been received during the whole
+    					     sync cycle */
+    						/* set global eng_pos state and channel interrupt */
+    						eng_pos_state = ENG_POS_FIRST_HALF_SYNC;
+109C: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+10A0: 0xCFFF3100   ram   *((global int8 *) 0x0) = p_31_24;
+    :              chan  set SvcdChan ChannelIntr;;
+    						channel.CIRC = CIRC_INT_FROM_SERVICED;
+    						/* reset Cam log */
+    						Link4(link_cam);
+10A4: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+10A8: 0xCFEFF88F   ram   p_31_0 = *((channel int32 *) 0x3C);;
+    						/* reset tooth_counter_cycle */
+    						tooth_counter_cycle = 1;
+10AC: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+10B0: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    						/* reset TCR2 */
+    						tcr2 = 0;
+    #ifdef ERRATA_2477
+    						err2477_tcr2_target = 0;
+    #endif
+    					}
+    					break;
+10B4: 0xF7F08727   seq  goto addr_0x10E4, no_flush;;
+10B8: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    				case ENG_POS_FULL_SYNC:
+    					/* if the engine cycle is finished */
+    					if(tooth_counter_cycle >= teeth_per_cycle)
+10BC: 0x00020419   alu    a = p_31_24+0x0;;
+10C0: 0xCFEFF983   ram   p_31_24 = *((channel int8 *) 0xC);;
+10C4: 0x1C32AEFF   alu    p_31_24 = p_31_24-a, SampleFlags;;
+10C8: 0xF4D08727   seq  if LowerOrEqual==false then goto addr_0x10E4, flush;;
+    					{
+    						/* set channel interrupt - once per cycle in full-sync */
+    #if defined(__TARGET_ETPU2__) || defined(__ETPU2__)
+    						channel.CIRC =  CIRC_BOTH_FROM_SERVICED;  /* on eTPU2, set also DMA request */
+    #else
+    						channel.CIRC =  CIRC_INT_FROM_SERVICED;
+    #endif
+    						/* reset Cam log */
+    						Link4(link_cam);
+10CC: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+10D0: 0xCEEFF88F   ram   p_31_0 = *((channel int32 *) 0x3C);
+    :              chan  set SvcdChan BothIntr;;
+    						/* reset tooth_counter_cycle */
+    						tooth_counter_cycle = 1;
+10D4: 0x9DEFAB00   alu    p_31_24 = ((u24) 0)+0x1;
+    :              ram   p_23_0 = *((global int24 *) 0x1);;
+10D8: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    						/* increment eng_cycle_tcr2_start by one cycle */
+    						eng_cycle_tcr2_start += eng_cycle_tcr2_ticks;
+10DC: 0x9FE80B01   alu    a = p+0x0;
+    :              ram   p_23_0 = *((global int24 *) 0x5);;
+10E0: 0x9F387B01   alu    p = p+a;
+    :              ram   *((global int24 *) 0x5) = p_23_0;;
+    					}
+    					break;
+    				}
+    				/* log tooth period (after possible tooth_counter_cycle reset) */
+    				ToothArray_Log(last_tooth_period_norm);
+10E4: 0xFFE0600D   ram   p_23_0 = *((channel int24 *) 0x15);
+    :              seq  call addr_0xC00, no_flush;;
+10E8: 0x00080419   alu    a = p+0x0;;
+    				/* open and close window using win_ratio_after_gap */
+    				Window_NoReturn(win_ratio_after_gap,
+    				                      last_tooth_period_norm);
+10EC: 0xBFEFFB8C   ram   p_23_0 = *((channel int24 *) 0x31);;
+10F0: 0xB7A83B85   alu    b = (p+0x0) >> 1;
+    :              ram   p_23_0 = *((channel int24 *) 0x15);;
+10F4: 0xF7F057A7   seq  goto addr_0xAF4, no_flush;;
+10F8: 0x00085411   alu    d = p+0x0;;
+    			}
+    			else
+    			{ /* gap not verified - an unexpected tooth in gap */
+    				/* record last_tooth_period */
+    				last_tooth_period = tooth_period;
+    				last_tooth_period_norm = tooth_period; 
+    				/* set error */
+    				error |= CRANK_ERR_TOOTH_IN_GAP;
+10FC: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+1100: 0x0E02AB82   alu    p_31_24 = p_31_24 | 0x80;;
+    				/* restart searching for the gap */
+    				Stall_NoReturn();
+1104: 0xF7F05C67   seq  goto addr_0xB8C, no_flush;;
+1108: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			}
+    			break;
+    
+    		case CRANK_BLANK_TIME:
+    		case CRANK_TOOTH_BEFORE_GAP_NOT_HRM:
+    			/**************************************************************
+    			* STATE: T1, T10 - BLANK_TIME, TOOTH_BEFORE_GAP_NOT_HRM 
+    			* DESCRIPTION: 
+    			*   Transition detection should never happen in this state.
+    			*   Set CRANK_ERR_INVALID_TRANS.
+    			**************************************************************/
+    			error |= CRANK_ERR_INVALID_TRANS;
+110C: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+1110: 0x0C02ABA2   alu    p_31_24 = p_31_24 | 0x1;;
+1114: 0xC7FFF989   ram   *((channel int8 *) 0x24) = p_31_24;
+    :              seq   end;;
+    			break;
+    
+    		default:
+    			error |= CRANK_ERR_INTERNAL;
+1118: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+111C: 0x0C42AB82   alu    p_31_24 = p_31_24 | 0x10;;
+1120: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			break;
+    		}
+    	}
+1124: 0x0FFFFFFF   seq   end;;
+    	else /* cc.MRLB == 1 */
+    	{
+    		/* A timeout detected */
+    		channel.MRLB = MRL_CLEAR;
+1128: 0xDFEFD988   ram   p_31_24 = *((channel int8 *) 0x20);
+    :              chan  clear MatchRecognitionLatchB;;
+    		switch(state)
+112C: 0x13D2F782   alu    nil = p_31_24+0xF4, SampleFlags8;;
+1130: 0xF09893C7   seq  if cFlag==true then goto addr_0x1278, flush;;
+1134: 0xFFDFDEF9   seq  goto ProgramCounter + p_31_24, flush;;
+1138: 0xF7D09367   seq  goto addr_0x126C, flush;;
+113C: 0xF7D08B47   seq  goto addr_0x1168, flush;;
+1140: 0xF7D09367   seq  goto addr_0x126C, flush;;
+1144: 0xF7D09367   seq  goto addr_0x126C, flush;;
+1148: 0xF7D08CE7   seq  goto addr_0x119C, flush;;
+114C: 0xF7D08CE7   seq  goto addr_0x119C, flush;;
+1150: 0xF7D08CE7   seq  goto addr_0x119C, flush;;
+1154: 0xF7C08DCC   ram   p_23_0 = *((channel int24 *) 0x11);
+    :              seq  goto addr_0x11B8, flush;;
+1158: 0xF7D05C67   seq  goto addr_0xB8C, flush;;
+115C: 0xF7D09147   seq  goto addr_0x1228, flush;;
+1160: 0xF7D091C7   seq  goto addr_0x1238, flush;;
+1164: 0xF7D092E7   seq  goto addr_0x125C, flush;;
+    		{
+    		case CRANK_BLANK_TIME:
+    			/**************************************************************
+    			* STATE: M1 - BLANK_TIME
+    			* DESCRIPTION: 
+    			*   Blank_time after the first transition has passed.
+    			*   Start to detect transitions.
+    			**************************************************************/
+    			tcr2 = 0;
+    			if(cc.FM0 == CRANK_FM0_USE_TRANS_RISING)
+1168: 0xF3F08BC7   seq  if FunctionMode0==false then goto addr_0x1178, no_flush;;
+116C: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			{
+    				channel.IPACA = IPAC_RISING;
+    			}
+1170: 0xF7F08BE7   seq  goto addr_0x117C, no_flush;;
+1174: 0x59FFFFFF   chan  detectA = rising input pin edge;;
+    			else
+    			{
+    				channel.IPACA = IPAC_FALLING;
+1178: 0x5AFFFFFF   chan  detectA = falling input pin edge;;
+    			}
+    			/* open window immediately, do not close it */
+    			erta = tcr1;
+117C: 0x7FFC2E7F   alu    ertA = tcr1+0x0;
+    :              chan  clear MatchRecognitionLatchA, matchA = ertA, set MatchEnableLatchA;;
+    			channel.MRLA = MRL_CLEAR;
+    			channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    			/* set next state */
+    			state = CRANK_BLANK_TEETH;
+1180: 0x000FA459   alu    p_31_24 = ((u24) 0)+0x2;;
+1184: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			if(blank_teeth == 0)
+1188: 0xCFEFF987   ram   p_31_24 = *((channel int8 *) 0x1C);;
+118C: 0x0002A019   alu    p_31_24 = p_31_24+0x0, SampleFlags;;
+1190: 0xF0D09427   seq  if z==false then goto addr_0x1284, flush;;
+    			{
+    				state = CRANK_FIRST_TRANS;
+1194: 0x000FA479   alu    p_31_24 = ((u24) 0)+0x3;;
+1198: 0xC7FFF988   ram   *((channel int8 *) 0x20) = p_31_24;
+    :              seq   end;;
+    			}
+    			break;
+    
+    		case CRANK_SECOND_TRANS:      /* first_tooth_timeout */
+    		case CRANK_TEST_POSSIBLE_GAP: /* long timeout over a possible gap */
+    		case CRANK_VERIFY_GAP:        /* win_ratio_after_gap */
+    			/**************************************************************
+    			* STATE: M4, M5, M6 - SECOND_TRANS, TEST_POSSIBLE_GAP, 
+    			*                     VERIFY_GAP
+    			* DESCRIPTION: 
+    			*   Transition not detected in a window, timeout happened 
+    			*   while gap is not verified.
+    			*   Set CRANK_ERR_TIMEOUT.
+    			*   Open the acceptance window immediately and do not close it.  
+    			**************************************************************/
+    			/* timeout happened while gap is not verified */
+    			tcr2 = 0;
+119C: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			error |= CRANK_ERR_TIMEOUT;
+11A0: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+11A4: 0x0C12AB82   alu    p_31_24 = p_31_24 | 0x4;;
+11A8: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			state = CRANK_FIRST_TRANS;
+11AC: 0x000FA479   alu    p_31_24 = ((u24) 0)+0x3;;
+11B0: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* open the acceptance window immediately and do not close it */
+    			erta = tcr1;
+    			channel.MRLA = MRL_CLEAR;
+    			channel.MRLB = MRL_CLEAR;
+    			channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+11B4: 0x6FFC2E3F   alu    ertA = tcr1+0x0;
+    :              chan  clear MatchRecognitionLatchA, matchA = ertA, set MatchEnableLatchA, clear MatchRecognitionLatchB;
+    :              seq   end;;
+    			break;
+    
+    		case CRANK_COUNTING:          /* win_ratio_normal */
+    			/**************************************************************
+    			* STATE: M7 - COUNTING
+    			* DESCRIPTION: 
+    			*   Transition not detected in normal window, this is the first
+    			*   timeout, there has not been one immediately before.
+    			*   Set CRANK_ERR_TIMEOUT.
+    			*   Insert physical tooth, increment tooth counters.
+    			*   Expect next transition in window after timeout.  
+    			**************************************************************/
+    			error |= CRANK_ERR_TIMEOUT;
+11B8: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+11BC: 0x0C12AB82   alu    p_31_24 = p_31_24 | 0x4;;
+11C0: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			state = CRANK_COUNTING_TIMEOUT;
+11C4: 0x002FA419   alu    p_31_24 = ((u24) 0)+0x8;;
+11C8: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* approximate when the missed tooth should have happened */
+    			tooth_period = last_tooth_period;
+11CC: 0x00085411   alu    d = p+0x0;;
+    			erta = last_tooth_tcr1_time + tooth_period;
+11D0: 0x1F742FFF   alu    ertA = d+diob;;
+    			last_tooth_tcr1_time = erta;
+11D4: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			/* set IPH because one tooth was missing */
+    			tpr_str.IPH = 1;
+11D8: 0x00000C08   alu    a = ((u24) 0)+0x1000;;
+11DC: 0x3F322F90   alu    ToothProgram = ToothProgram | a;;
+    #ifdef ERRATA_2477
+    			err2477_tcr2_target += tcr2_ticks_per_tooth;
+    #endif
+    			/* increment tooth counters */
+    			tooth_counter_gap++;
+11E0: 0xCFEFF985   ram   p_31_24 = *((channel int8 *) 0x14);;
+11E4: 0x0002A439   alu    p_31_24 = p_31_24+0x1;;
+11E8: 0xCFFFF985   ram   *((channel int8 *) 0x14) = p_31_24;;
+    			tooth_counter_cycle++;
+11EC: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+11F0: 0x0002A439   alu    p_31_24 = p_31_24+0x1;;
+11F4: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    			/* test if before the gap */
+    			if(tooth_counter_gap == teeth_till_gap - 1)
+11F8: 0xCFEFF981   ram   p_31_24 = *((channel int8 *) 0x4);;
+11FC: 0x1EF20FFF   alu    a = p_31_24-0x0-1;;
+1200: 0xCFEFF985   ram   p_31_24 = *((channel int8 *) 0x14);;
+1204: 0x1C32AEFF   alu    p_31_24 = p_31_24-a, SampleFlags;;
+1208: 0xF0D090A7   seq  if z==false then goto addr_0x1214, flush;;
+    			{
+    				/* there is one more teeth till the gap */
+    				state = CRANK_TOOTH_BEFORE_GAP;
+120C: 0x002FA439   alu    p_31_24 = ((u24) 0)+0x9;;
+1210: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			}
+    			/* log tooth period */
+    			ToothArray_Log(tooth_period);
+1214: 0xFFF06007   seq  call addr_0xC00, no_flush;;
+1218: 0x00040419   alu    a = d+0x0;;
+    			/* open and close window using win_ratio_after_timeout */
+    			Window_NoReturn(win_ratio_after_timeout, tooth_period);
+121C: 0xBFEFFB8D   ram   p_23_0 = *((channel int24 *) 0x35);;
+1220: 0xF7F057A7   seq  goto addr_0xAF4, no_flush;;
+1224: 0x14083F96   alu    b = (p+0x0) >> 1;;
+    			break;
+    
+    		case CRANK_COUNTING_TIMEOUT:  /* win_ratio_after_timeout */
+    			/**************************************************************
+    			* STATE: M8 - COUNTING_TIMEOUT
+    			* DESCRIPTION: 
+    			*   Transition not detected in window after timeout, this is 
+    			*   the second timeout, there has been one immediately before.
+    			*   Set ENG_POS_SEEK and IRQ, signal output functions and
+    			*   restart searching for the gap.  
+    			**************************************************************/
+    			/* restart searching for the gap */
+    			Stall_NoReturn();
+    			break;
+    
+    		case CRANK_TOOTH_BEFORE_GAP:  /* win_ratio_normal */
+    			/**************************************************************
+    			* STATE: M9 - TOOTH_BEFORE_GAP
+    			* DESCRIPTION: 
+    			*   Transition not detected in normal window before gap.
+    			*   Set CRANK_ERR_TIMEOUT_BEFORE_GAP.
+    			*   Set ENG_POS_SEEK and IRQ, signal output functions and
+    			*   restart searching for the gap.  
+    			**************************************************************/
+    			/* set error */
+    			error |= CRANK_ERR_TIMEOUT_BEFORE_GAP;
+1228: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+122C: 0x0C82AB82   alu    p_31_24 = p_31_24 | 0x20;;
+    			/* restart searching for the gap */
+    			Stall_NoReturn();
+1230: 0xF7F05C67   seq  goto addr_0xB8C, no_flush;;
+1234: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			break;
+    
+    		case CRANK_TOOTH_BEFORE_GAP_NOT_HRM:
+    			/**************************************************************
+    			* STATE: M10 - TOOTH_BEFORE_GAP_NOT_HRM
+    			* DESCRIPTION:
+    			*   On devices with ERRATA_2477, the MISSCNT must be written
+    			*   when EAC is out of high rate mode, which is now.
+    			*   Expect next transition within window across the gap.
+    			**************************************************************/
+    			/* write MISSCNT when not in High Rate Mode */
+    			/* set state */
+    			state = CRANK_TOOTH_AFTER_GAP;
+1238: 0x002FA479   alu    p_31_24 = ((u24) 0)+0xB;;
+123C: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* write MISSCNT */
+    			tpr |= misscnt_mask;
+1240: 0xCFEFF895   ram   p_31_0 = *((channel int32 *) 0x54);;
+1244: 0x00060419   alu    a = p_31_16+0x0;;
+1248: 0x3F322F90   alu    ToothProgram = ToothProgram | a;;
+    			/* open and close window using win_ratio_normal
+    			   and win_ratio_across_gap */
+    			channel.TBSB = TBS_M1C2GE;
+124C: 0x4FFF2FFF   chan  ActionUnitB: tcr1 >= match, capture tcr2;;
+    			erta = last_tooth_tcr1_time;
+1250: 0xBFEB2B84   alu    ertA = diob+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x11);;
+    			WindowAcrossGap_NoReturn(last_tooth_period);
+1254: 0xF7F058C7   seq  goto addr_0xB18, no_flush;;
+1258: 0x00080419   alu    a = p+0x0;;
+    			break;
+    
+    		case CRANK_TOOTH_AFTER_GAP:   /* long timeout over a possible gap */
+    			/**************************************************************
+    			* STATE: M11 - TOOTH_AFTER_GAP
+    			* DESCRIPTION: 
+    			*   Transition not detected in window across gap.
+    			*   Set CRANK_ERR_TIMEOUT_AFTER_GAP.
+    			*   Set ENG_POS_SEEK and IRQ, signal output functions and
+    			*   restart searching for the gap.  
+    			**************************************************************/
+    			/* set error */
+    			error |= CRANK_ERR_TIMEOUT_AFTER_GAP;
+125C: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+1260: 0x0D02AB82   alu    p_31_24 = p_31_24 | 0x40;;
+    			/* restart searching for the gap */
+    			Stall_NoReturn();
+1264: 0xF7F05C67   seq  goto addr_0xB8C, no_flush;;
+1268: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			break;
+    
+    		case CRANK_SEEK:
+    		case CRANK_BLANK_TEETH:
+    		case CRANK_FIRST_TRANS:
+    			/**************************************************************
+    			* STATE: M0, M2, M3 - SEEK, BLANK_TEETH, FIRST_TRANS 
+    			* DESCRIPTION: 
+    			*   Match detection should never happen in this state.
+    			*   Set CRANK_ERR_INVALID_MATCH.
+    			**************************************************************/
+    			error |= CRANK_ERR_INVALID_MATCH;
+126C: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+1270: 0x0C02ABC2   alu    p_31_24 = p_31_24 | 0x2;;
+1274: 0xC7FFF989   ram   *((channel int8 *) 0x24) = p_31_24;
+    :              seq   end;;
+    			break;
+    
+    		default:
+    			error |= CRANK_ERR_INTERNAL;
+1278: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+127C: 0x0C42AB82   alu    p_31_24 = p_31_24 | 0x10;;
+1280: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			break;
+    		}
+    	}
+    }
+1284: 0x0FFFFFFF   seq   end;;
+    
+    /**************************************************************************
+    * THREAD NAME: CRANK_WITH_ADDITIONAL_TOOTH
+    * DESCRIPTION: A transition or a timeout, handling a crank wheel with an
+    *              additional tooth.
+    **************************************************************************/
+    _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
+    {
+    	uint24_t   tooth_period;
+    	uint24_t   half_window_width;
+    
+    	if(cc.TDLA == 1)
+1288: 0xF210B5C7   seq  if SampledTransitionDetectionLatchA==false then goto addr_0x16B8, flush;;
+    	{
+    		/* A tooth transition detected */
+    		channel.TDL = TDL_CLEAR;
+128C: 0xDFE7F988   ram   p_31_24 = *((channel int8 *) 0x20);
+    :              chan  clear TransitionDetectionLatches;;
+    		switch(state)
+1290: 0x13D2F782   alu    nil = p_31_24+0xF4, SampleFlags8;;
+1294: 0xF098B547   seq  if cFlag==true then goto addr_0x16A8, flush;;
+1298: 0xFFDFDEF9   seq  goto ProgramCounter + p_31_24, flush;;
+129C: 0xF7C09668   ram   p_23_0 = *((channel int24 *) 0x1);
+    :              seq  goto addr_0x12CC, flush;;
+12A0: 0xF7D0B4E7   seq  goto addr_0x169C, flush;;
+12A4: 0xF7D09727   seq  goto addr_0x12E4, flush;;
+12A8: 0xF7D09847   seq  goto addr_0x1308, flush;;
+12AC: 0xF7D09927   seq  goto addr_0x1324, flush;;
+12B0: 0xF7C09A0C   ram   p_23_0 = *((channel int24 *) 0x11);
+    :              seq  goto addr_0x1340, flush;;
+12B4: 0xF7D09CC7   seq  goto addr_0x1398, flush;;
+12B8: 0xF7D0A187   seq  goto addr_0x1430, flush;;
+12BC: 0xF7D0A147   seq  goto addr_0x1428, flush;;
+12C0: 0xF7D0A487   seq  goto addr_0x1490, flush;;
+12C4: 0xF7D0A767   seq  goto addr_0x14EC, flush;;
+12C8: 0xF7D0AB27   seq  goto addr_0x1564, flush;;
+    		{
+    		case CRANK_SEEK:
+    			/**************************************************************
+    			* STATE: T0 - SEEK
+    			* DESCRIPTION: 
+    			*   First transition after INIT was detected.
+    			*   Wait for blank_time without detecting transitions.
+    			**************************************************************/
+    			tcr2 = 0;
+12CC: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			/* set_state */
+    			state = CRANK_BLANK_TIME;
+12D0: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+12D4: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* do not detect transitions */
+    			channel.IPACA = IPAC_NO_DETECT;
+12D8: 0x58FFFFFF   chan  detectA = off;;
+    			/* keep window opened, close window after blank_time */
+    			WindowCloseAt_NoReturn(erta + blank_time);
+12DC: 0xF7F05B07   seq  goto addr_0xB60, no_flush;;
+12E0: 0x1F1E3FFF   alu    ertB = ertA+p;;
+    			break;
+    
+    		case CRANK_BLANK_TEETH:
+    			/**************************************************************
+    			* STATE: T2 - BLANK_TEETH
+    			* DESCRIPTION: 
+    			*   Downcount blank_teeth without tooth period measurement.
+    			**************************************************************/
+    			tcr2 = 0;
+12E4: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			/* downcount blank_teeth */
+    			if(--blank_teeth <= 0)
+12E8: 0xCFEFF987   ram   p_31_24 = *((channel int8 *) 0x1C);;
+12EC: 0x1EF20FFF   alu    a = p_31_24-0x0-1;;
+12F0: 0x0009A419   alu    p_31_24 = a+0x0;;
+12F4: 0xCFFFF987   ram   *((channel int8 *) 0x1C) = p_31_24;;
+12F8: 0x0009A019   alu    p_31_24 = a+0x0, SampleFlags;;
+12FC: 0xF4D0B5A7   seq  if LowerOrEqual==false then goto addr_0x16B4, flush;;
+    			{
+    				/* set_state */
+    				state = CRANK_FIRST_TRANS;
+1300: 0x000FA479   alu    p_31_24 = ((u24) 0)+0x3;;
+1304: 0xC7FFF988   ram   *((channel int8 *) 0x20) = p_31_24;
+    :              seq   end;;
+    			}
+    			break;
+    
+    		case CRANK_FIRST_TRANS:
+    			/**************************************************************
+    			* STATE: T3 - FIRST_TRANS
+    			* DESCRIPTION: 
+    			*   First transition after blank_teeth was detected.
+    			*   Record transition time.
+    			*   Next transition is expected within first_tooth_timeout. 
+    			**************************************************************/
+    			tcr2 = 0;
+1308: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			/* set_state */
+    			state = CRANK_SECOND_TRANS;
+130C: 0x001FA419   alu    p_31_24 = ((u24) 0)+0x4;;
+1310: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* record last_tooth_tcr1_time */
+    			last_tooth_tcr1_time = erta;
+1314: 0xBFFE7B83   alu    p = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = p_23_0;;
+    			/* keep window opened, close window after first_tooth_timeout */
+    			WindowCloseAt_NoReturn(erta + first_tooth_timeout);
+1318: 0xBFEFFB8E   ram   p_23_0 = *((channel int24 *) 0x39);;
+131C: 0xF7F05B07   seq  goto addr_0xB60, no_flush;;
+1320: 0x1F1E3FFF   alu    ertB = ertA+p;;
+    			break;
+    
+    		case CRANK_SECOND_TRANS:
+    			/**************************************************************
+    			* STATE: T4A - SECOND_TRANS
+    			* DESCRIPTION: 
+    			*   Second transition after blank_teeth was detected.
+    			*   Calculate tooth period and record transition time.
+    			*   Next transition is expected in normal window or earlier. 
+    			**************************************************************/
+    			tcr2 = 0;
+1324: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			/* set_state */
+    			state = CRANK_TEST_POSSIBLE_GAP;
+1328: 0x001FA439   alu    p_31_24 = ((u24) 0)+0x5;;
+132C: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* record last_tooth_period and last_tooth_tcr1_time */
+    			tooth_period = erta - last_tooth_tcr1_time;
+1330: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			last_tooth_tcr1_time = erta;
+1334: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			last_tooth_period = tooth_period;
+    			/* keep window opened, close using win_ratio_normal */
+    			WindowClose_NoReturn(win_ratio_normal,
+    			                           tooth_period);
+1338: 0xF7F05B27   seq  goto addr_0xB64, no_flush;;
+133C: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    			break;
+    
+    		case CRANK_TEST_POSSIBLE_GAP:
+    			/**************************************************************
+    			* STATE: T5A - TEST_POSSIBLE_GAP
+    			* DESCRIPTION: 
+    			*   Transition detected, no synchronization yet.
+    			*   Calculate tooth period and record transition time.
+    			*   Test for a possible gap (AB of ABA test).
+    			*   If possible gap found, expect next transition in normal 
+    			*     window from the previous tooth (not the additional one).
+    			*   Else, expect next transition in normal window or earlier.
+    			**************************************************************/
+    			tcr2 = 0;
+1340: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			/* calc tooth_period */
+    			tooth_period = erta - last_tooth_tcr1_time;
+1344: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			/* test for a possible additional tooth (AB test) */
+    			if(muliur(last_tooth_period, gap_ratio)
+    			   > tooth_period)
+1348: 0xBFE80B89   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x25);;
+134C: 0x2F19FFE9   alu    mac = a * ((u24) p);;
+1350: 0xF3589A87   seq  if MacBusy==true then goto addr_0x1350, flush;;
+1354: 0x00070409   alu    a = mach+0x0;;
+1358: 0x1C34FEFF   alu    nil = d-a, SampleFlags;;
+135C: 0xF0B09C67   seq  if cFlag==false then goto addr_0x138C, no_flush;;
+1360: 0x000E7419   alu    p = ertA+0x0;;
+    			{ /* a possible additional tooth found */
+    				/* record additional_tooth_period */
+    				additional_tooth_period = tooth_period;
+1364: 0xBFF47B87   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x1D) = p_23_0;;
+    				/* set state */
+    				state = CRANK_VERIFY_GAP;
+1368: 0x001FA459   alu    p_31_24 = ((u24) 0)+0x6;;
+136C: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    				/* open and close window using win_ratio_normal from 
+    				   the previous tooth (not the additional one) */
+    				half_window_width = muliur(last_tooth_period, win_ratio_normal);
+1370: 0xBFEFFB84   ram   p_23_0 = *((channel int24 *) 0x11);;
+1374: 0xBFE80B8A   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x29);;
+1378: 0x2F19FFE9   alu    mac = a * ((u24) p);;
+137C: 0xF3589BE7   seq  if MacBusy==true then goto addr_0x137C, flush;;
+    				WindowCloseAt_NoReturn(last_tooth_tcr1_time
+    						+ last_tooth_period + half_window_width);
+1380: 0x1F3B0FFF   alu    a = diob+a;;
+1384: 0xF7F05B07   seq  goto addr_0xB60, no_flush;;
+1388: 0x1F373FEF   alu    ertB = mach+a;;
+    			}
+    			else
+    			{ /* gap not found */
+    				/* record last_tooth_tcr1_time */
+    				last_tooth_tcr1_time = erta;
+138C: 0xBFFFFB83   ram   *((channel int24 *) 0xD) = p_23_0;;
+    				/* record last_tooth_period */
+    				last_tooth_period = tooth_period;
+1390: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    				last_tooth_period_norm = tooth_period; 
+    				/* keep window opened, close using win_ratio_normal */
+    				WindowClose_NoReturn(win_ratio_normal,
+    				                           tooth_period);
+1394: 0xF7D05B2D   ram   *((channel int24 *) 0x15) = p_23_0;
+    :              seq  goto addr_0xB64, flush;;
+    			}
+    			break;
+    
+    		case CRANK_VERIFY_GAP:
+    			/**************************************************************
+    			* STATE: T6A - VERIFY_GAP
+    			* DESCRIPTION: 
+    			*   Transition detected in window, after an additional tooth.
+    			*   Calculate tooth period and record transition time.
+    			*   Verify a possible gap (BA of ABA test).
+    			*   If gap verified, this is the first tooth after gap,
+    			*     start TCR2, set ENG_POS_FIRST_HALF_SYNC and IRQ,
+    			*     reset Cam log, expect next transition in normal window. 
+    			*   Else, test possible gap again, expect next transition  
+    			*     in normal window or earlier.
+    			**************************************************************/
+    			/* calc tooth_period and record last_tooth_tcr1_time */
+    			tooth_period = erta - last_tooth_tcr1_time;
+1398: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			last_tooth_tcr1_time = erta;
+139C: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			/* verify a possible additional tooth (BA portion of the ABA test) */
+    			if(muliur(tooth_period, gap_ratio)
+    			   > additional_tooth_period)
+13A0: 0xBFEFFB89   ram   p_23_0 = *((channel int24 *) 0x25);;
+13A4: 0x2F14FFE9   alu    mac = d * ((u24) p);;
+13A8: 0xF3489D4F   ram   p_23_0 = *((channel int24 *) 0x1D);
+    :              seq  if MacBusy==true then goto addr_0x13A8, flush;;
+13AC: 0x00070409   alu    a = mach+0x0;;
+13B0: 0x1C38FEFF   alu    nil = p-a, SampleFlags;;
+13B4: 0xF090A0A7   seq  if cFlag==false then goto addr_0x1414, flush;;
+    			{ /* additional tooth verified */
+    				/* set states */
+    				state = CRANK_COUNTING;
+13B8: 0x001FA479   alu    p_31_24 = ((u24) 0)+0x7;;
+13BC: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    				/* record last_tooth_period */
+    				last_tooth_period = tooth_period;
+13C0: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    				last_tooth_period_norm = tooth_period; 
+13C4: 0xBDFFAB85   alu    p_31_24 = ((u24) 0)+0x1;
+    :              ram   *((channel int24 *) 0x15) = p_23_0;;
+    				/* set tooth counters - the first tooth after gap */
+    				tooth_counter_gap = 1;
+13C8: 0xCFFFF985   ram   *((channel int8 *) 0x14) = p_31_24;;
+    				tooth_counter_cycle = 1;
+13CC: 0xBDEFAF81   alu    p_31_24 = ((u24) 0)+0x1;
+    :              ram   diob = *((channel int24 *) 0x5);;
+13D0: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    				/* set TRR and TICKS */
+    				tpr_str.TICKS = (uint16_t)tcr2_ticks_per_tooth - 1;
+13D4: 0x1EFB0FFF   alu    a = diob-0x0-1;;
+13D8: 0x03F004FC   alu    diob = ((u24) 0)+0x3FF;;
+13DC: 0x2F791FF2   alu    sr = a & diob;;
+13E0: 0x1C000F18   alu    diob = ((u24) 0)+0xFC00;;
+13E4: 0x3F724FB2   alu    diob = ToothProgram & diob;;
+13E8: 0x3F5B2FD0   alu    ToothProgram = diob | sr;;
+    				Set_TRR(tooth_period);
+13EC: 0xFFF06107   seq  call addr_0xC20, no_flush;;
+13F0: 0x00040419   alu    a = d+0x0;;
+    				tcr2 = 0;
+13F4: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    				/* set global eng_pos state and channel interrupt */
+    				eng_pos_state = ENG_POS_FIRST_HALF_SYNC;
+13F8: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+13FC: 0xCFFF3100   ram   *((global int8 *) 0x0) = p_31_24;
+    :              chan  set SvcdChan ChannelIntr;;
+    				channel.CIRC = CIRC_INT_FROM_SERVICED;
+    				/* reset Cam log */
+    				Link4(link_cam);
+1400: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+1404: 0xCFEFF88F   ram   p_31_0 = *((channel int32 *) 0x3C);;
+    				/* open and close window using win_ratio_normal */
+    				Window_NoReturn(win_ratio_normal, tooth_period);
+1408: 0xBFEFFB8A   ram   p_23_0 = *((channel int24 *) 0x29);;
+140C: 0xF7F057A7   seq  goto addr_0xAF4, no_flush;;
+1410: 0x14083F96   alu    b = (p+0x0) >> 1;;
+    			}
+    			else
+    			{ /* additional tooth not verified */
+    				/* set state */
+    				state = CRANK_TEST_POSSIBLE_GAP;
+1414: 0x001FA439   alu    p_31_24 = ((u24) 0)+0x5;;
+1418: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    				/* correct tooth_period - it was not the additional tooth */
+    				tooth_period -= additional_tooth_period;
+141C: 0x1C145FF7   alu    d = d-p;;
+    				/* record last_tooth_period */
+    				last_tooth_period = tooth_period;
+1420: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    				last_tooth_period_norm = tooth_period; 
+    				/* keep window opened, close using win_ratio_normal */
+    				WindowClose_NoReturn(win_ratio_normal,
+    				                           tooth_period);
+1424: 0xF7D05B2D   ram   *((channel int24 *) 0x15) = p_23_0;
+    :              seq  goto addr_0xB64, flush;;
+    			}
+    			break;
+    
+    		case CRANK_COUNTING_TIMEOUT:
+    			/**************************************************************
+    			* STATE: T8 - COUNTING_TIMEOUT
+    			* DESCRIPTION: 
+    			*   Transition detected within window after a single timeout.
+    			*   Recover and continue normal counting.
+    			**************************************************************/
+    			/* recover from counting timeout */
+    			/* set state */
+    			state = CRANK_COUNTING;
+1428: 0x001FA479   alu    p_31_24 = ((u24) 0)+0x7;;
+142C: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* continue to normal processing at CRANK_COUNTING */
+    
+    		case CRANK_COUNTING:
+    			/**************************************************************
+    			* STATE: T7 - COUNTING
+    			* DESCRIPTION: 
+    			*   Transition detected in normal window.
+    			*   Calculate tooth period and record transition time.
+    			*   Increment tooth counters.
+    			*   Check if the next tooth is the last before gap.
+    			*   Adjust TCR2 rate.
+    			*   Expect next transition in normal window. 
+    			**************************************************************/
+    			/* record last_tooth_period and last_tooth_tcr1_time */
+    			tooth_period = erta - last_tooth_tcr1_time;
+1430: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			last_tooth_tcr1_time = erta;
+1434: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			last_tooth_period = tooth_period;
+1438: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    			last_tooth_period_norm = tooth_period; 
+143C: 0xBFFFFB85   ram   *((channel int24 *) 0x15) = p_23_0;;
+    			/* increment tooth counters */
+    			tooth_counter_gap++;
+1440: 0xCFEFF985   ram   p_31_24 = *((channel int8 *) 0x14);;
+1444: 0x0002A439   alu    p_31_24 = p_31_24+0x1;;
+1448: 0xCFFFF985   ram   *((channel int8 *) 0x14) = p_31_24;;
+    			tooth_counter_cycle++;
+144C: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+1450: 0x0002A439   alu    p_31_24 = p_31_24+0x1;;
+1454: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    			/* test if before the gap */
+    			if(tooth_counter_gap == teeth_till_gap - 1)
+1458: 0xCFEFF981   ram   p_31_24 = *((channel int8 *) 0x4);;
+145C: 0x1EF20FFF   alu    a = p_31_24-0x0-1;;
+1460: 0xCFEFF985   ram   p_31_24 = *((channel int8 *) 0x14);;
+1464: 0x1C32AEFF   alu    p_31_24 = p_31_24-a, SampleFlags;;
+1468: 0xF0D0A3A7   seq  if z==false then goto addr_0x1474, flush;;
+    			{
+    				/* there is one more teeth till the gap */
+    				state = CRANK_TOOTH_BEFORE_GAP;
+146C: 0x002FA439   alu    p_31_24 = ((u24) 0)+0x9;;
+1470: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			}
+    			/* set TRR */
+    			Set_TRR(tooth_period);
+1474: 0xFFF06107   seq  call addr_0xC20, no_flush;;
+1478: 0x00040419   alu    a = d+0x0;;
+    			/* log tooth period */
+    			ToothArray_Log(tooth_period);
+147C: 0xFFF06007   seq  call addr_0xC00, no_flush;;
+1480: 0x00040419   alu    a = d+0x0;;
+    			/* open and close window using win_ratio_normal */
+    			Window_NoReturn(win_ratio_normal, tooth_period);
+1484: 0xBFEFFB8A   ram   p_23_0 = *((channel int24 *) 0x29);;
+1488: 0xF7F057A7   seq  goto addr_0xAF4, no_flush;;
+148C: 0x14083F96   alu    b = (p+0x0) >> 1;;
+    			break;
+    
+    		case CRANK_TOOTH_BEFORE_GAP:
+    			/**************************************************************
+    			* STATE: T9A - TOOTH_BEFORE_GAP
+    			* DESCRIPTION: 
+    			*   Transition detected in normal window, gap expected next.
+    			*   Calculate tooth period and record transition time.
+    			*   Increment tooth counters.
+    			*   Adjust TCR2 rate.
+    			*   Expect next transition in normal window or earlier. 
+    			**************************************************************/
+    			/* record last_tooth_period and last_tooth_tcr1_time */
+    			tooth_period = erta - last_tooth_tcr1_time;
+1490: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			last_tooth_tcr1_time = erta;
+1494: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			last_tooth_period = tooth_period;
+1498: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    			last_tooth_period_norm = tooth_period; 
+149C: 0xBFFFFB85   ram   *((channel int24 *) 0x15) = p_23_0;;
+    			/* increment tooth counters */
+    			tooth_counter_gap++;
+14A0: 0xCFEFF985   ram   p_31_24 = *((channel int8 *) 0x14);;
+14A4: 0xBDE2AB82   alu    p_31_24 = p_31_24+0x1;
+    :              ram   p_23_0 = *((channel int24 *) 0x9);;
+14A8: 0xCFFFF985   ram   *((channel int8 *) 0x14) = p_31_24;;
+    			tooth_counter_cycle++;
+14AC: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+14B0: 0x0002A439   alu    p_31_24 = p_31_24+0x1;;
+14B4: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    			/* Set TICKS */
+    			tpr_str.TICKS = (uint16_t)tcr2_ticks_per_add_tooth - 1;
+14B8: 0x1EF80FFF   alu    a = p-0x0-1;;
+14BC: 0x03F004FC   alu    diob = ((u24) 0)+0x3FF;;
+14C0: 0x2F791FF2   alu    sr = a & diob;;
+14C4: 0x1C000F18   alu    diob = ((u24) 0)+0xFC00;;
+14C8: 0x3F724FB2   alu    diob = ToothProgram & diob;;
+14CC: 0x3F5B2FD0   alu    ToothProgram = diob | sr;;
+    			/* set TRR */
+    			Set_TRR(tooth_period);
+14D0: 0xFFF06107   seq  call addr_0xC20, no_flush;;
+14D4: 0x00040419   alu    a = d+0x0;;
+    			/* log tooth period */
+    			ToothArray_Log(tooth_period);
+14D8: 0xFFF06007   seq  call addr_0xC00, no_flush;;
+14DC: 0x00040419   alu    a = d+0x0;;
+    			/* set state */
+    			state = CRANK_ADDITIONAL_TOOTH;
+14E0: 0x002FA459   alu    p_31_24 = ((u24) 0)+0xA;;
+    			/* keep window opened, close using win_ratio_normal */
+    			WindowClose_NoReturn(win_ratio_normal,
+    			                           tooth_period);
+14E4: 0xF7F05B27   seq  goto addr_0xB64, no_flush;;
+14E8: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			break;
+    
+    		case CRANK_ADDITIONAL_TOOTH:
+    			/**************************************************************
+    			* STATE: T10A - CRANK_ADDITIONAL_TOOTH
+    			* DESCRIPTION: 
+    			*   Transition detected in additional-tooth window.
+    			*   Calculate additional tooth period.
+    			*   Verify the additional tooth (AB of ABA test).
+    			*   If tooth verified, expect next transition within normal 
+    			*     window from the last tooth (not the additional tooth). 
+    			*   Else, tooth not verified, set CRANK_ERR_ADD_TOOTH_NOT_FOUND,
+    			*     set ENG_POS_SEEK and IRQ, signal output functions and
+    			*     restart searching for the gap  
+    			**************************************************************/
+    			/* calc tooth_period */
+    			tooth_period = erta - last_tooth_tcr1_time;
+14EC: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			/* Set TICKS */
+    			tpr_str.TICKS = (uint16_t)(tcr2_ticks_per_tooth - tcr2_ticks_per_add_tooth) - 1;
+14F0: 0xBFEFFF81   ram   diob = *((channel int24 *) 0x5);;
+14F4: 0xBC0B0B84   alu    a = diob-p;
+    :              ram   p_23_0 = *((channel int24 *) 0x11);;
+14F8: 0x1EF90FFF   alu    a = a-0x0-1;;
+14FC: 0x03F004FC   alu    diob = ((u24) 0)+0x3FF;;
+1500: 0x2F791FF2   alu    sr = a & diob;;
+1504: 0x1C000F18   alu    diob = ((u24) 0)+0xFC00;;
+1508: 0x3F724FB2   alu    diob = ToothProgram & diob;;
+150C: 0x3F5B2FD0   alu    ToothProgram = diob | sr;;
+    			/* verify the additional tooth (AB test) */
+    			if(muliur(last_tooth_period, gap_ratio)
+    			   > tooth_period)
+1510: 0xBFE80B89   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x25);;
+1514: 0x2F19FFE9   alu    mac = a * ((u24) p);;
+1518: 0xF358A8C7   seq  if MacBusy==true then goto addr_0x1518, flush;;
+151C: 0x00070409   alu    a = mach+0x0;;
+1520: 0x1C34FEFF   alu    nil = d-a, SampleFlags;;
+1524: 0xF0B0AAC7   seq  if cFlag==false then goto addr_0x1558, no_flush;;
+1528: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+    			{ /* additional tooth not verified */
+    				/* record additional_tooth_period */
+    				additional_tooth_period = tooth_period;
+152C: 0xBFF47B87   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x1D) = p_23_0;;
+    				/* set state */
+    				state = CRANK_TOOTH_AFTER_GAP;
+1530: 0x002FA479   alu    p_31_24 = ((u24) 0)+0xB;;
+1534: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    				/* open and close window using win_ratio_normal from 
+    				   the previous tooth (not the additional one) */
+    				half_window_width = muliur(last_tooth_period, win_ratio_normal);
+1538: 0xBFEFFB84   ram   p_23_0 = *((channel int24 *) 0x11);;
+153C: 0xBFE80B8A   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x29);;
+1540: 0x2F19FFE9   alu    mac = a * ((u24) p);;
+1544: 0xF358AA27   seq  if MacBusy==true then goto addr_0x1544, flush;;
+    				WindowCloseAt_NoReturn(last_tooth_tcr1_time
+    						+ last_tooth_period + half_window_width);
+1548: 0xBFEFFF83   ram   diob = *((channel int24 *) 0xD);;
+154C: 0x1F3B0FFF   alu    a = diob+a;;
+1550: 0xF7F05B07   seq  goto addr_0xB60, no_flush;;
+1554: 0x1F373FEF   alu    ertB = mach+a;;
+    			}
+    			else
+    			{ /* additional tooth not verified */
+    				/* record last_tooth_tcr1_time */
+    				last_tooth_tcr1_time = erta;
+    				/* record last_tooth_period */
+    				last_tooth_period = tooth_period;
+    				last_tooth_period_norm = tooth_period; 
+    				/* set error */
+    				error |= CRANK_ERR_ADD_TOOTH_NOT_FOUND;
+1558: 0x0E02AB82   alu    p_31_24 = p_31_24 | 0x80;;
+    				/* restart searching for the gap */
+    				Stall_NoReturn();
+155C: 0xF7F05C67   seq  goto addr_0xB8C, no_flush;;
+1560: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			}
+    			break;
+    
+    		case CRANK_TOOTH_AFTER_GAP:
+    			/**************************************************************
+    			* STATE: T11A - TOOTH_AFTER_GAP
+    			* DESCRIPTION: 
+    			*   Transition detected in normal window from the last tooth.
+    			*   Calculate tooth period and record transition time.
+    			*   Verify the additional tooth (BA of ABA test).
+    			*   If additional tooth verified, adjust TCR2 rate and tooth
+    			*     counters, sync-cycle or engine-cycle is finished:
+    			*     In ENG_POS_FIRST_HALF_SYNC, 
+    			*       ask CPU to decode the Cam log, 
+    			*       reset TCR2, reset tooth_counter_cycle,
+    			*       set ENG_POS_PRE_FULL_SYNC and IRQ.
+    			*     In ENG_POS_PRE_FULL_SYNC, there was no response from CPU,
+    			*       reset Cam log, reset TCR2, reset tooth_counter_cycle,
+    			*       set ENG_POS_FIRST_HALF_SYNC and IRQ.
+    			*     In ENG_POS_FULL_SYNC,
+    			*       reset Cam log, reset tooth_counter_cycle, 
+    			*       set IRQ (once per cycle in full sync)
+    			*       increment eng_cycle_tcr2_start by one cycle
+    			*     Expect next transition in normal window.
+    			*   Else, additional tooth not verified, set CRANK_ERR_TOOTH_IN_GAP,
+    			*     set ENG_POS_SEEK and IRQ, signal output functions and
+    			*     restart searching for the gap  
+    			**************************************************************/
+    			/* Set TICKS */
+    			tpr_str.TICKS = (uint16_t)tcr2_ticks_per_tooth - 1;
+1564: 0xBFEFFF81   ram   diob = *((channel int24 *) 0x5);;
+1568: 0xBEEB0B89   alu    a = diob-0x0-1;
+    :              ram   p_23_0 = *((channel int24 *) 0x25);;
+156C: 0x03F004FC   alu    diob = ((u24) 0)+0x3FF;;
+1570: 0x2F791FF2   alu    sr = a & diob;;
+1574: 0x1C000F18   alu    diob = ((u24) 0)+0xFC00;;
+1578: 0x3F724FB2   alu    diob = ToothProgram & diob;;
+157C: 0x3F5B2FD0   alu    ToothProgram = diob | sr;;
+    			/* calc tooth_period and record last_tooth_tcr1_time */
+    			tooth_period = erta - last_tooth_tcr1_time;
+1580: 0xBFEFFF83   ram   diob = *((channel int24 *) 0xD);;
+1584: 0x1C7E5FF7   alu    d = ertA-diob;;
+    			last_tooth_tcr1_time = erta;
+1588: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			/* verify a possible additional tooth (BA portion of the ABA test) */
+    			if(muliur(tooth_period, gap_ratio)
+    			   > additional_tooth_period)
+158C: 0x2F14FFE9   alu    mac = d * ((u24) p);;
+1590: 0xF348AC8F   ram   p_23_0 = *((channel int24 *) 0x1D);
+    :              seq  if MacBusy==true then goto addr_0x1590, flush;;
+1594: 0x00070409   alu    a = mach+0x0;;
+1598: 0x1C38FEFF   alu    nil = p-a, SampleFlags;;
+159C: 0xF090B467   seq  if cFlag==false then goto addr_0x168C, flush;;
+    			{ /* additional tooth verified */
+    				/* record last_tooth_period */
+    				last_tooth_period = tooth_period;
+15A0: 0xBFF47B84   alu    p = d+0x0;
+    :              ram   *((channel int24 *) 0x11) = p_23_0;;
+    				last_tooth_period_norm = tooth_period; 
+    				/* set TRR */
+    				Set_TRR(tooth_period);
+15A4: 0xFFF0610D   ram   *((channel int24 *) 0x15) = p_23_0;
+    :              seq  call addr_0xC20, no_flush;;
+15A8: 0x00040419   alu    a = d+0x0;;
+    				/* set state - if the second tooth after the gap times out then
+    				   the state machine will revert to FIRST_TRANS */
+    				state = CRANK_COUNTING_TIMEOUT;
+15AC: 0x002FA419   alu    p_31_24 = ((u24) 0)+0x8;;
+15B0: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    				/* set tooth counters - first tooth after gap */
+    				tooth_counter_gap = 1;
+15B4: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+15B8: 0xCFFFF985   ram   *((channel int8 *) 0x14) = p_31_24;;
+    				tooth_counter_cycle++;
+15BC: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+15C0: 0x0002A439   alu    p_31_24 = p_31_24+0x1;;
+15C4: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    				/* log tooth period */
+    				ToothArray_Log(tooth_period);
+15C8: 0xFFF06007   seq  call addr_0xC00, no_flush;;
+15CC: 0x00040419   alu    a = d+0x0;;
+    				/* when the sync-cycle or engine-cycle is finished */
+    				switch(eng_pos_state)
+15D0: 0xCFEFF100   ram   p_31_24 = *((global int8 *) 0x0);;
+15D4: 0x00020419   alu    a = p_31_24+0x0;;
+15D8: 0x0809DBAA   alu    p_7_0 = a ^ 0x1, SampleFlags;;
+15DC: 0xF0D8AFC7   seq  if z==true then goto addr_0x15F8, flush;;
+15E0: 0x0809DBCA   alu    p_7_0 = a ^ 0x2, SampleFlags;;
+15E4: 0xF0D8B127   seq  if z==true then goto addr_0x1624, flush;;
+15E8: 0x0809DBEA   alu    p_7_0 = a ^ 0x3, SampleFlags;;
+15EC: 0xF0F8B2C7   seq  if z==true then goto addr_0x1658, no_flush;;
+15F0: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+15F4: 0xF7D0B407   seq  goto addr_0x1680, flush;;
+    				{
+    				case ENG_POS_FIRST_HALF_SYNC:
+    					/* if the sync cycle is finished */
+    					if(tooth_counter_cycle >= teeth_per_sync)
+15F8: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+15FC: 0x00020419   alu    a = p_31_24+0x0;;
+1600: 0xCFEFF984   ram   p_31_24 = *((channel int8 *) 0x10);;
+1604: 0x1C32AEFF   alu    p_31_24 = p_31_24-a, SampleFlags;;
+1608: 0xF4D0B407   seq  if LowerOrEqual==false then goto addr_0x1680, flush;;
+    					{ /* It is time to ask the CPU to decode which half-cycle it was */
+    						/* set global eng_pos state and channel interrupt */
+    						eng_pos_state = ENG_POS_PRE_FULL_SYNC;
+160C: 0x000FA459   alu    p_31_24 = ((u24) 0)+0x2;;
+1610: 0xCFFF3100   ram   *((global int8 *) 0x0) = p_31_24;
+    :              chan  set SvcdChan ChannelIntr;;
+    						channel.CIRC = CIRC_INT_FROM_SERVICED;
+    						/* reset tooth_counter_cycle */
+    						tooth_counter_cycle = 1;
+1614: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+1618: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    						/* reset TCR2 */
+    						tcr2 = 0;
+    					}
+    					break;
+161C: 0xF7F0B407   seq  goto addr_0x1680, no_flush;;
+1620: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    				case ENG_POS_PRE_FULL_SYNC:
+    					/* if the sync cycle is finished */
+    					if(tooth_counter_cycle >= teeth_per_sync)
+1624: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+1628: 0x00020419   alu    a = p_31_24+0x0;;
+162C: 0xCFEFF984   ram   p_31_24 = *((channel int8 *) 0x10);;
+1630: 0x1C32AEFF   alu    p_31_24 = p_31_24-a, SampleFlags;;
+1634: 0xF4D0B407   seq  if LowerOrEqual==false then goto addr_0x1680, flush;;
+    					{ /* no answer from the CPU has been received during the whole
+    					     sync cycle */
+    						/* set global eng_pos state and channel interrupt */
+    						eng_pos_state = ENG_POS_FIRST_HALF_SYNC;
+1638: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+163C: 0xCFFF3100   ram   *((global int8 *) 0x0) = p_31_24;
+    :              chan  set SvcdChan ChannelIntr;;
+    						channel.CIRC = CIRC_INT_FROM_SERVICED;
+    						/* reset Cam log */
+    						Link4(link_cam);
+1640: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+1644: 0xCFEFF88F   ram   p_31_0 = *((channel int32 *) 0x3C);;
+    						/* reset tooth_counter_cycle */
+    						tooth_counter_cycle = 1;
+1648: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+164C: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    						/* reset TCR2 */
+    						tcr2 = 0;
+    					}
+    					break;
+1650: 0xF7F0B407   seq  goto addr_0x1680, no_flush;;
+1654: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    				case ENG_POS_FULL_SYNC:
+    					/* if the engine cycle is finished */
+    					if(tooth_counter_cycle >= teeth_per_cycle)
+1658: 0x00020419   alu    a = p_31_24+0x0;;
+165C: 0xCFEFF983   ram   p_31_24 = *((channel int8 *) 0xC);;
+1660: 0x1C32AEFF   alu    p_31_24 = p_31_24-a, SampleFlags;;
+1664: 0xF4D0B407   seq  if LowerOrEqual==false then goto addr_0x1680, flush;;
+    					{
+    						/* set channel interrupt - once per cycle in full-sync */
+    #if defined(__TARGET_ETPU2__)
+    						channel.CIRC =  CIRC_BOTH_FROM_SERVICED;  /* on eTPU2, set also DMA request */
+    #else
+    						channel.CIRC =  CIRC_INT_FROM_SERVICED;
+    #endif
+    						/* reset Cam log */
+    						Link4(link_cam);
+1668: 0xFFF11A67   seq  call addr_0x234C, no_flush;;
+166C: 0xCEEFF88F   ram   p_31_0 = *((channel int32 *) 0x3C);
+    :              chan  set SvcdChan BothIntr;;
+    						/* reset tooth_counter_cycle */
+    						tooth_counter_cycle = 1;
+1670: 0x9DEFAB00   alu    p_31_24 = ((u24) 0)+0x1;
+    :              ram   p_23_0 = *((global int24 *) 0x1);;
+1674: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    						/* increment eng_cycle_tcr2_start by one cycle */
+    						eng_cycle_tcr2_start += eng_cycle_tcr2_ticks;
+1678: 0x9FE80B01   alu    a = p+0x0;
+    :              ram   p_23_0 = *((global int24 *) 0x5);;
+167C: 0x9F387B01   alu    p = p+a;
+    :              ram   *((global int24 *) 0x5) = p_23_0;;
+    					}
+    					break;
+    				}
+    				/* open and close window using win_ratio_normal */
+    				Window_NoReturn(win_ratio_normal, tooth_period);
+1680: 0xBFEFFB8A   ram   p_23_0 = *((channel int24 *) 0x29);;
+1684: 0xF7F057A7   seq  goto addr_0xAF4, no_flush;;
+1688: 0x14083F96   alu    b = (p+0x0) >> 1;;
+    			}
+    			else
+    			{ /* additional tooth not verified */
+    				/* correct tooth_period - it was not the additional tooth */
+    				tooth_period -= additional_tooth_period;
+    				/* record last_tooth_period */
+    				last_tooth_period = tooth_period;
+    				last_tooth_period_norm = tooth_period; 
+    				/* set error */
+    				error |= CRANK_ERR_ADD_TOOTH_NOT_FOUND;
+168C: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+1690: 0x0E02AB82   alu    p_31_24 = p_31_24 | 0x80;;
+    				/* restart searching for the gap */
+    				Stall_NoReturn();
+1694: 0xF7F05C67   seq  goto addr_0xB8C, no_flush;;
+1698: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			}
+    			break;
+    
+    		case CRANK_BLANK_TIME:
+    			/**************************************************************
+    			* STATE: T1 - BLANK_TIME 
+    			* DESCRIPTION: 
+    			*   Transition detection should never happen in this state.
+    			*   Set CRANK_ERR_INVALID_TRANS.
+    			**************************************************************/
+    			error |= CRANK_ERR_INVALID_TRANS;
+169C: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+16A0: 0x0C02ABA2   alu    p_31_24 = p_31_24 | 0x1;;
+16A4: 0xC7FFF989   ram   *((channel int8 *) 0x24) = p_31_24;
+    :              seq   end;;
+    			break;
+    
+    		default:
+    			error |= CRANK_ERR_INTERNAL;
+16A8: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+16AC: 0x0C42AB82   alu    p_31_24 = p_31_24 | 0x10;;
+16B0: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			break;
+    		}
+    	}
+16B4: 0x0FFFFFFF   seq   end;;
+    	else /* cc.MRLB == 1 */
+    	{
+    		/* A timeout detected */
+    		channel.MRLB = MRL_CLEAR;
+16B8: 0xDFEFD988   ram   p_31_24 = *((channel int8 *) 0x20);
+    :              chan  clear MatchRecognitionLatchB;;
+    		switch(state)
+16BC: 0x13D2F782   alu    nil = p_31_24+0xF4, SampleFlags8;;
+16C0: 0xF098BFA7   seq  if cFlag==true then goto addr_0x17F4, flush;;
+16C4: 0xFFDFDEF9   seq  goto ProgramCounter + p_31_24, flush;;
+16C8: 0xF7D0BF47   seq  goto addr_0x17E8, flush;;
+16CC: 0xF7D0B7C7   seq  goto addr_0x16F8, flush;;
+16D0: 0xF7D0BF47   seq  goto addr_0x17E8, flush;;
+16D4: 0xF7D0BF47   seq  goto addr_0x17E8, flush;;
+16D8: 0xF7D0B967   seq  goto addr_0x172C, flush;;
+16DC: 0xF7D0B967   seq  goto addr_0x172C, flush;;
+16E0: 0xF7D0B967   seq  goto addr_0x172C, flush;;
+16E4: 0xF7C0BA4C   ram   p_23_0 = *((channel int24 *) 0x11);
+    :              seq  goto addr_0x1748, flush;;
+16E8: 0xF7D05C67   seq  goto addr_0xB8C, flush;;
+16EC: 0xF7D0BDC7   seq  goto addr_0x17B8, flush;;
+16F0: 0xF7D0BE47   seq  goto addr_0x17C8, flush;;
+16F4: 0xF7D0BEC7   seq  goto addr_0x17D8, flush;;
+    		{
+    		case CRANK_BLANK_TIME:
+    			/**************************************************************
+    			* STATE: M1 - BLANK_TIME
+    			* DESCRIPTION: 
+    			*   Blank_time after the first transition has passed.
+    			*   Start to detect transitions.
+    			**************************************************************/
+    			tcr2 = 0;
+    			if(cc.FM0 == CRANK_FM0_USE_TRANS_RISING)
+16F8: 0xF3F0B847   seq  if FunctionMode0==false then goto addr_0x1708, no_flush;;
+16FC: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			{
+    				channel.IPACA = IPAC_RISING;
+    			}
+1700: 0xF7F0B867   seq  goto addr_0x170C, no_flush;;
+1704: 0x59FFFFFF   chan  detectA = rising input pin edge;;
+    			else
+    			{
+    				channel.IPACA = IPAC_FALLING;
+1708: 0x5AFFFFFF   chan  detectA = falling input pin edge;;
+    			}
+    			/* open window immediately, do not close it */
+    			erta = tcr1;
+170C: 0x7FFC2E7F   alu    ertA = tcr1+0x0;
+    :              chan  clear MatchRecognitionLatchA, matchA = ertA, set MatchEnableLatchA;;
+    			channel.MRLA = MRL_CLEAR;
+    			channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    			/* set next state */
+    			state = CRANK_BLANK_TEETH;
+1710: 0x000FA459   alu    p_31_24 = ((u24) 0)+0x2;;
+1714: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			if(blank_teeth == 0)
+1718: 0xCFEFF987   ram   p_31_24 = *((channel int8 *) 0x1C);;
+171C: 0x0002A019   alu    p_31_24 = p_31_24+0x0, SampleFlags;;
+1720: 0xF0D0C007   seq  if z==false then goto addr_0x1800, flush;;
+    			{
+    				state = CRANK_FIRST_TRANS;
+1724: 0x000FA479   alu    p_31_24 = ((u24) 0)+0x3;;
+1728: 0xC7FFF988   ram   *((channel int8 *) 0x20) = p_31_24;
+    :              seq   end;;
+    			}
+    			break;
+    
+    		case CRANK_SECOND_TRANS:      /* first_tooth_timeout */
+    		case CRANK_TEST_POSSIBLE_GAP: /* win_ratio_normal */
+    		case CRANK_VERIFY_GAP:        /* win_ratio_normal */
+    			/**************************************************************
+    			* STATE: M4, M5, M6 - SECOND_TRANS, TEST_POSSIBLE_GAP, 
+    			*                     VERIFY_GAP
+    			* DESCRIPTION: 
+    			*   Transition not detected in a window, timeout happened 
+    			*   while gap is not verified.
+    			*   Set CRANK_ERR_TIMEOUT.
+    			*   Open the acceptance window immediately and do not close it.  
+    			**************************************************************/
+    			/* timeout happened while gap is not verified */
+    			tcr2 = 0;
+172C: 0x000F9419   alu    tcr2 = ((u24) 0)+0x0;;
+    			error |= CRANK_ERR_TIMEOUT;
+1730: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+1734: 0x0C12AB82   alu    p_31_24 = p_31_24 | 0x4;;
+1738: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			state = CRANK_FIRST_TRANS;
+173C: 0x000FA479   alu    p_31_24 = ((u24) 0)+0x3;;
+1740: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* open the acceptance window immediately and do not close it */
+    			erta = tcr1;
+    			channel.MRLA = MRL_CLEAR;
+    			channel.MRLB = MRL_CLEAR;
+    			channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+1744: 0x6FFC2E3F   alu    ertA = tcr1+0x0;
+    :              chan  clear MatchRecognitionLatchA, matchA = ertA, set MatchEnableLatchA, clear MatchRecognitionLatchB;
+    :              seq   end;;
+    			break;
+    
+    		case CRANK_COUNTING:          /* win_ratio_normal */
+    			/**************************************************************
+    			* STATE: M7 - COUNTING
+    			* DESCRIPTION: 
+    			*   Transition not detected in normal window, this is the first
+    			*   timeout, there has not been one immediately before.
+    			*   Set CRANK_ERR_TIMEOUT.
+    			*   Insert physical tooth, increment tooth counters.
+    			*   Expect next transition in window after timeout.  
+    			**************************************************************/
+    			error |= CRANK_ERR_TIMEOUT;
+1748: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+174C: 0x0C12AB82   alu    p_31_24 = p_31_24 | 0x4;;
+1750: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			state = CRANK_COUNTING_TIMEOUT;
+1754: 0x002FA419   alu    p_31_24 = ((u24) 0)+0x8;;
+1758: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			/* approximate when the missed tooth should have happened */
+    			tooth_period = last_tooth_period;
+175C: 0x00085411   alu    d = p+0x0;;
+    			erta = last_tooth_tcr1_time + tooth_period;
+1760: 0x1F742FFF   alu    ertA = d+diob;;
+    			last_tooth_tcr1_time = erta;
+1764: 0xBFFE4F83   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0xD) = diob;;
+    			/* set IPH because one tooth was missing */
+    			tpr_str.IPH = 1;
+1768: 0x00000C08   alu    a = ((u24) 0)+0x1000;;
+176C: 0x3F322F90   alu    ToothProgram = ToothProgram | a;;
+    			/* increment tooth counters */
+    			tooth_counter_gap++;
+1770: 0xCFEFF985   ram   p_31_24 = *((channel int8 *) 0x14);;
+1774: 0x0002A439   alu    p_31_24 = p_31_24+0x1;;
+1778: 0xCFFFF985   ram   *((channel int8 *) 0x14) = p_31_24;;
+    			tooth_counter_cycle++;
+177C: 0xCFEFF986   ram   p_31_24 = *((channel int8 *) 0x18);;
+1780: 0x0002A439   alu    p_31_24 = p_31_24+0x1;;
+1784: 0xCFFFF986   ram   *((channel int8 *) 0x18) = p_31_24;;
+    			/* test if before the gap */
+    			if(tooth_counter_gap == teeth_till_gap - 1)
+1788: 0xCFEFF981   ram   p_31_24 = *((channel int8 *) 0x4);;
+178C: 0x1EF20FFF   alu    a = p_31_24-0x0-1;;
+1790: 0xCFEFF985   ram   p_31_24 = *((channel int8 *) 0x14);;
+1794: 0x1C32AEFF   alu    p_31_24 = p_31_24-a, SampleFlags;;
+1798: 0xF0D0BD27   seq  if z==false then goto addr_0x17A4, flush;;
+    			{
+    				/* there is one more teeth till the gap */
+    				state = CRANK_TOOTH_BEFORE_GAP;
+179C: 0x002FA439   alu    p_31_24 = ((u24) 0)+0x9;;
+17A0: 0xCFFFF988   ram   *((channel int8 *) 0x20) = p_31_24;;
+    			}
+    			/* log tooth period */
+    			ToothArray_Log(tooth_period);
+17A4: 0xFFF06007   seq  call addr_0xC00, no_flush;;
+17A8: 0x00040419   alu    a = d+0x0;;
+    			/* open and close window using win_ratio_after_timeout */
+    			Window_NoReturn(win_ratio_after_timeout, tooth_period);
+17AC: 0xBFEFFB8D   ram   p_23_0 = *((channel int24 *) 0x35);;
+17B0: 0xF7F057A7   seq  goto addr_0xAF4, no_flush;;
+17B4: 0x14083F96   alu    b = (p+0x0) >> 1;;
+    			break;
+    
+    		case CRANK_COUNTING_TIMEOUT:  /* win_ratio_after_timeout */
+    			/**************************************************************
+    			* STATE: M8 - COUNTING_TIMEOUT
+    			* DESCRIPTION: 
+    			*   Transition not detected in window after timeout, this is 
+    			*   the second timeout, there has been one immediately before.
+    			*   Set ENG_POS_SEEK and IRQ, signal output functions and
+    			*   restart searching for the gap.  
+    			**************************************************************/
+    			/* restart searching for the gap */
+    			Stall_NoReturn();
+    			break;
+    
+    		case CRANK_TOOTH_BEFORE_GAP:  /* win_ratio_normal */
+    			/**************************************************************
+    			* STATE: M9 - TOOTH_BEFORE_GAP
+    			* DESCRIPTION: 
+    			*   Transition not detected in normal window before gap.
+    			*   Set CRANK_ERR_TIMEOUT_BEFORE_GAP.
+    			*   Set ENG_POS_SEEK and IRQ, signal output functions and
+    			*   restart searching for the gap.  
+    			**************************************************************/
+    			/* set error */
+    			error |= CRANK_ERR_TIMEOUT_BEFORE_GAP;
+17B8: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+17BC: 0x0C82AB82   alu    p_31_24 = p_31_24 | 0x20;;
+    			/* restart searching for the gap */
+    			Stall_NoReturn();
+17C0: 0xF7F05C67   seq  goto addr_0xB8C, no_flush;;
+17C4: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			break;
+    
+    		case CRANK_ADDITIONAL_TOOTH:   /* win_ratio_normal */
+    			/**************************************************************
+    			* STATE: M10A - CRANK_ADDITIONAL_TOOTH
+    			* DESCRIPTION:
+    			**************************************************************/
+    			/* set error */
+    			error |= CRANK_ERR_ADD_TOOTH_NOT_FOUND;
+17C8: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+17CC: 0x0E02AB82   alu    p_31_24 = p_31_24 | 0x80;;
+    			/* restart searching for the gap */
+    			Stall_NoReturn();
+17D0: 0xF7F05C67   seq  goto addr_0xB8C, no_flush;;
+17D4: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			break;
+    
+    		case CRANK_TOOTH_AFTER_GAP:   /* win_ratio_normal */
+    			/**************************************************************
+    			* STATE: M11 - TOOTH_AFTER_GAP
+    			* DESCRIPTION: 
+    			*   Transition not detected in window across gap.
+    			*   Set CRANK_ERR_TIMEOUT_AFTER_GAP.
+    			*   Set ENG_POS_SEEK and IRQ, signal output functions and
+    			*   restart searching for the gap.  
+    			**************************************************************/
+    			/* set error */
+    			error |= CRANK_ERR_TIMEOUT_AFTER_GAP;
+17D8: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+17DC: 0x0D02AB82   alu    p_31_24 = p_31_24 | 0x40;;
+    			/* restart searching for the gap */
+    			Stall_NoReturn();
+17E0: 0xF7F05C67   seq  goto addr_0xB8C, no_flush;;
+17E4: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			break;
+    
+    		case CRANK_SEEK:
+    		case CRANK_BLANK_TEETH:
+    		case CRANK_FIRST_TRANS:
+    			/**************************************************************
+    			* STATE: M0, M2, M3 - SEEK, BLANK_TEETH, FIRST_TRANS 
+    			* DESCRIPTION: 
+    			*   Match detection should never happen in this state.
+    			*   Set CRANK_ERR_INVALID_MATCH.
+    			**************************************************************/
+    			error |= CRANK_ERR_INVALID_MATCH;
+17E8: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+17EC: 0x0C02ABC2   alu    p_31_24 = p_31_24 | 0x2;;
+17F0: 0xC7FFF989   ram   *((channel int8 *) 0x24) = p_31_24;
+    :              seq   end;;
+    			break;
+    
+    		default:
+    			error |= CRANK_ERR_INTERNAL;
+17F4: 0xCFEFF989   ram   p_31_24 = *((channel int8 *) 0x24);;
+17F8: 0x0C42AB82   alu    p_31_24 = p_31_24 | 0x10;;
+17FC: 0xCFFFF989   ram   *((channel int8 *) 0x24) = p_31_24;;
+    			break;
+    		}
+    	}
+    }
+1800: 0x0FFFFFFF   seq   end;;
+    
+    
+    DEFINE_ENTRY_TABLE(CRANK, CRANK, alternate, inputpin, autocfsr)
+    {
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR2(6,7,   x,  x, x, x,  x, x, INIT),
+004A: 0x8327       Alt Entry 5, Addr 0xC9C, DisableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==6,7    Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==X  ChanFlag1==X  ChanFlag0==X
+    
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR3(1,4,5, x,  x, x, x,  x, x, ANGLE_ADJUST),
+0048: 0x033A       Alt Entry 4, Addr 0xCE8, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==1,4,5  Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==X  ChanFlag1==X  ChanFlag0==X
+    
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR1(0,     x,  1, 1, 0,  0, 0, CRANK_WITH_GAP),
+0070: 0xC347       Alt Entry 24, Addr 0xD1C, EnableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==0  ChanFlag1==0  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 1, 0,  0, 1, CRANK_WITH_GAP),
+0074: 0xC347       Alt Entry 26, Addr 0xD1C, EnableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==0  ChanFlag1==1  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 1, 1,  0, 0, CRANK_WITH_GAP),
+0078: 0xC347       Alt Entry 28, Addr 0xD1C, EnableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==1  ChanFlag1==0  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 1, 1,  0, 1, CRANK_WITH_GAP),
+007C: 0xC347       Alt Entry 30, Addr 0xD1C, EnableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==1  ChanFlag1==1  ChanFlag0==0
+    
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR1(0,     x,  1, 1, 0,  1, 0, CRANK_WITH_ADDITIONAL_TOOTH),
+0072: 0xC4A2       Alt Entry 25, Addr 0x1288, EnableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==0  ChanFlag1==0  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 1, 0,  1, 1, CRANK_WITH_ADDITIONAL_TOOTH),
+0076: 0xC4A2       Alt Entry 27, Addr 0x1288, EnableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==0  ChanFlag1==1  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 1, 1,  1, 0, CRANK_WITH_ADDITIONAL_TOOTH),
+007A: 0xC4A2       Alt Entry 29, Addr 0x1288, EnableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==1  ChanFlag1==0  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 1, 1,  1, 1, CRANK_WITH_ADDITIONAL_TOOTH),
+007E: 0xC4A2       Alt Entry 31, Addr 0x1288, EnableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==1  ChanFlag1==1  ChanFlag0==1
+    
+        // unused/invalid entries
+    	ETPU_VECTOR2(2,3,   x,  x, x, 0,  0, x, _Error_handler_unexpected_thread),
+0040: 0x09F4       Alt Entry 0, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==2,3    Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==0  ChanFlag1==X  ChanFlag0==0
+    	ETPU_VECTOR2(2,3,   x,  x, x, 0,  1, x, _Error_handler_unexpected_thread),
+0042: 0x09F4       Alt Entry 1, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==2,3    Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==0  ChanFlag1==X  ChanFlag0==1
+    	ETPU_VECTOR2(2,3,   x,  x, x, 1,  0, x, _Error_handler_unexpected_thread),
+0044: 0x09F4       Alt Entry 2, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==2,3    Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==1  ChanFlag1==X  ChanFlag0==0
+    	ETPU_VECTOR2(2,3,   x,  x, x, 1,  1, x, _Error_handler_unexpected_thread),
+0046: 0x09F4       Alt Entry 3, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==2,3    Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==1  ChanFlag1==X  ChanFlag0==1
+    	ETPU_VECTOR1(0,     1,  0, 0, 0,  x, x, _Error_handler_unexpected_thread),
+004C: 0x09F4       Alt Entry 6, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==0  matchB/TranA==0  InputPin==0  ChanFlag1==X  ChanFlag0==X
+    	ETPU_VECTOR1(0,     1,  0, 0, 1,  x, x, _Error_handler_unexpected_thread),
+004E: 0x09F4       Alt Entry 7, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==0  matchB/TranA==0  InputPin==1  ChanFlag1==X  ChanFlag0==X
+    	ETPU_VECTOR1(0,     x,  1, 0, 0,  0, 0, _Error_handler_unexpected_thread),
+0050: 0x09F4       Alt Entry 8, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==0  ChanFlag1==0  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 0, 0,  1, 0, _Error_handler_unexpected_thread),
+0052: 0x09F4       Alt Entry 9, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==0  ChanFlag1==0  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 0, 0,  0, 1, _Error_handler_unexpected_thread),
+0054: 0x09F4       Alt Entry 10, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==0  ChanFlag1==1  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 0, 0,  1, 1, _Error_handler_unexpected_thread),
+0056: 0x09F4       Alt Entry 11, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==0  ChanFlag1==1  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 0, 1,  0, 0, _Error_handler_unexpected_thread),
+0058: 0x09F4       Alt Entry 12, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==1  ChanFlag1==0  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 0, 1,  1, 0, _Error_handler_unexpected_thread),
+005A: 0x09F4       Alt Entry 13, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==1  ChanFlag1==0  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 0, 1,  0, 1, _Error_handler_unexpected_thread),
+005C: 0x09F4       Alt Entry 14, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==1  ChanFlag1==1  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 0, 1,  1, 1, _Error_handler_unexpected_thread),
+005E: 0x09F4       Alt Entry 15, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==1  ChanFlag1==1  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  0, 1, 0,  0, 0, _Error_handler_unexpected_thread),
+0060: 0x09F4       Alt Entry 16, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==0  ChanFlag1==0  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  0, 1, 0,  1, 0, _Error_handler_unexpected_thread),
+0062: 0x09F4       Alt Entry 17, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==0  ChanFlag1==0  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  0, 1, 0,  0, 1, _Error_handler_unexpected_thread),
+0064: 0x09F4       Alt Entry 18, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==0  ChanFlag1==1  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  0, 1, 0,  1, 1, _Error_handler_unexpected_thread),
+0066: 0x09F4       Alt Entry 19, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==0  ChanFlag1==1  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  0, 1, 1,  0, 0, _Error_handler_unexpected_thread),
+0068: 0x09F4       Alt Entry 20, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==1  ChanFlag1==0  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  0, 1, 1,  1, 0, _Error_handler_unexpected_thread),
+006A: 0x09F4       Alt Entry 21, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==1  ChanFlag1==0  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  0, 1, 1,  0, 1, _Error_handler_unexpected_thread),
+006C: 0x09F4       Alt Entry 22, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==1  ChanFlag1==1  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  0, 1, 1,  1, 1, _Error_handler_unexpected_thread),
+006E: 0x09F4       Alt Entry 23, Addr 0x27D0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==1  ChanFlag1==1  ChanFlag0==1
+    };
+    
+    
+    /*******************************************************************************
+    *  Export interface information to Host CPU program.
+    *******************************************************************************/
+    /* [MISRA 2004 Rule 3.4] usage of #pragma write documented in the Pragma Write 
+       Manual, see https://www.ashware.com/Manuals */
+    #pragma write h, (::ETPUfilename (cpu/etpu_crank_auto.h));
+    #pragma write h, (/**************************************************************** );
+    #pragma write h, (* WARNING: This file is automatically generated. DO NOT EDIT IT! );
+    #pragma write h, (*);
+    #pragma write h, (* FILE NAME: etpu_crank_auto.h  );
+    #if defined(__TARGET_ETPU1__)
+    #pragma write h, (* ARCHITECTURE: eTPU );
+    #else
+    #pragma write h, (* ARCHITECTURE: eTPU2 );
+    #endif
+    #pragma write h, (*);
+    #pragma write h, (* This file was generated by: __FILE__ on __DATE__, __TIME__ );
+    #pragma write h, (*);
+    #pragma write h, (* This file provides an interface between eTPU code and CPU       );
+    #pragma write h, (* code. All references to the eTPU function should be made with   );
+    #pragma write h, (* information in this file. This allows only symbolic             );
+    #pragma write h, (* information to be referenced which allows the eTPU code to be   );
+    #pragma write h, (* optimized without effecting the CPU code.                       );
+    #pragma write h, (*****************************************************************/);
+    #pragma write h, (#ifndef _ETPU_CRANK_AUTO_H_ );
+    #pragma write h, (#define _ETPU_CRANK_AUTO_H_ );
+    #pragma write h, ( );
+    #pragma write h, (/* Function Configuration Information */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_FUNCTION_NUMBER) ::ETPUfunctionnumber(CRANK) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_TABLE_SELECT) ::ETPUentrytype(CRANK) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_NUM_PARMS) ::ETPUram(CRANK) );
+    #pragma write h, ( );
+    #pragma write h, (/* Host Service Request Definitions */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_HSR_INIT)         CRANK_HSR_INIT );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_HSR_SET_SYNC)     CRANK_HSR_SET_SYNC );
+    #pragma write h, ( );
+    #pragma write h, (/* Function Mode Bit Definitions */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_FM0_USE_TRANS_RISING)  CRANK_FM0_USE_TRANS_RISING );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_FM0_USE_TRANS_FALLING) CRANK_FM0_USE_TRANS_FALLING );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_FM1_TOOTH_PERIODS_LOG_OFF) (0) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_FM1_TOOTH_PERIODS_LOG_ON)  (CRANK_FM1_LOG_TOOTH_PERIODS << 1) );
+    #pragma write h, ( );
+    #pragma write h, (/* Parameter Definitions */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_BLANK_TIME              ) ::ETPUlocation (CRANK, blank_time              ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_TCR1_CLOCK_SOURCE_DIV1  ) ::ETPUlocation (CRANK, tcr1_clock_source_div1  ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_TCR2_TICKS_PER_TOOTH    ) ::ETPUlocation (CRANK, tcr2_ticks_per_tooth    ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_TCR2_TICKS_PER_ADD_TOOTH) ::ETPUlocation (CRANK, tcr2_ticks_per_add_tooth) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_LAST_TOOTH_TCR1_TIME    ) ::ETPUlocation (CRANK, last_tooth_tcr1_time    ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_LAST_TOOTH_PERIOD       ) ::ETPUlocation (CRANK, last_tooth_period       ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_LAST_TOOTH_PERIOD_NORM  ) ::ETPUlocation (CRANK, last_tooth_period_norm  ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_ADDITIONAL_TOOTH_PERIOD ) ::ETPUlocation (CRANK, additional_tooth_period ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_TCR2_ADJUSTMENT         ) ::ETPUlocation (CRANK, tcr2_adjustment         ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_GAP_RATIO               ) ::ETPUlocation (CRANK, gap_ratio               ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_WIN_RATIO_NORMAL        ) ::ETPUlocation (CRANK, win_ratio_normal        ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_WIN_RATIO_ACROSS_GAP    ) ::ETPUlocation (CRANK, win_ratio_across_gap    ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_WIN_RATIO_AFTER_GAP     ) ::ETPUlocation (CRANK, win_ratio_after_gap     ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_WIN_RATIO_AFTER_TIMEOUT ) ::ETPUlocation (CRANK, win_ratio_after_timeout ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_FIRST_TOOTH_TIMEOUT     ) ::ETPUlocation (CRANK, first_tooth_timeout     ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_LINK_CAM                ) ::ETPUlocation (CRANK, link_cam                ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_LINK_1                  ) ::ETPUlocation (CRANK, link_1                  ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_LINK_2                  ) ::ETPUlocation (CRANK, link_2                  ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_LINK_3                  ) ::ETPUlocation (CRANK, link_3                  ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_LINK_4                  ) ::ETPUlocation (CRANK, link_4                  ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_TEETH_TILL_GAP          ) ::ETPUlocation (CRANK, teeth_till_gap          ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_TEETH_IN_GAP            ) ::ETPUlocation (CRANK, teeth_in_gap            ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_MISSCNT_MASK            ) ::ETPUlocation (CRANK, misscnt_mask            ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_TEETH_PER_CYCLE         ) ::ETPUlocation (CRANK, teeth_per_cycle         ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_TEETH_PER_SYNC          ) ::ETPUlocation (CRANK, teeth_per_sync          ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_TOOTH_COUNTER_GAP       ) ::ETPUlocation (CRANK, tooth_counter_gap       ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_TOOTH_COUNTER_CYCLE     ) ::ETPUlocation (CRANK, tooth_counter_cycle     ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_BLANK_TEETH             ) ::ETPUlocation (CRANK, blank_teeth             ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_STATE                   ) ::ETPUlocation (CRANK, state                   ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_ERROR                   ) ::ETPUlocation (CRANK, error                   ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_TOOTH_PERIOD_LOG        ) ::ETPUlocation (CRANK, tooth_period_log        ) );
+    #ifdef ERRATA_2477
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_OFFSET_ERR2477_TCR2_TARGET     ) ::ETPUlocation (CRANK, err2477_tcr2_target     ) );
+    #endif
+    #pragma write h, ( );
+    #pragma write h, (/* Globals definitions */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_OFFSET_ENG_POS_STATE                 )  ::ETPUlocation (eng_pos_state) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_OFFSET_ENG_CYCLE_TCR2_TICKS          )  ::ETPUlocation (eng_cycle_tcr2_ticks) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_OFFSET_ENG_CYCLE_TCR2_START          )  ::ETPUlocation (eng_cycle_tcr2_start) );
+    #pragma write h, ( );
+    #pragma write h, (/* Errors */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ERR_NO_ERROR           ) CRANK_ERR_NO_ERROR           );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ERR_INVALID_TRANS      ) CRANK_ERR_INVALID_TRANS      );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ERR_INVALID_MATCH      ) CRANK_ERR_INVALID_MATCH      );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ERR_TIMEOUT            ) CRANK_ERR_TIMEOUT            );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ERR_STALL              ) CRANK_ERR_STALL              );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ERR_INTERNAL           ) CRANK_ERR_INTERNAL           );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ERR_TIMEOUT_BEFORE_GAP ) CRANK_ERR_TIMEOUT_BEFORE_GAP );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ERR_TIMEOUT_AFTER_GAP  ) CRANK_ERR_TIMEOUT_AFTER_GAP  );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ERR_TOOTH_IN_GAP       ) CRANK_ERR_TOOTH_IN_GAP       );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ERR_ADD_TOOTH_NOT_FOUND) CRANK_ERR_ADD_TOOTH_NOT_FOUND);
+    #pragma write h, ( );
+    #pragma write h, (/* Crank State values */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_SEEK                     ) CRANK_SEEK                     );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_BLANK_TIME               ) CRANK_BLANK_TIME               );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_BLANK_TEETH              ) CRANK_BLANK_TEETH              );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_FIRST_TRANS              ) CRANK_FIRST_TRANS              );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_SECOND_TRANS             ) CRANK_SECOND_TRANS             );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_TEST_POSSIBLE_GAP        ) CRANK_TEST_POSSIBLE_GAP        );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_VERIFY_GAP               ) CRANK_VERIFY_GAP               );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_COUNTING                 ) CRANK_COUNTING                 );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_COUNTING_TIMEOUT         ) CRANK_COUNTING_TIMEOUT         );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_TOOTH_BEFORE_GAP         ) CRANK_TOOTH_BEFORE_GAP         );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_TOOTH_BEFORE_GAP_NOT_HRM ) CRANK_TOOTH_BEFORE_GAP_NOT_HRM );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ADDITIONAL_TOOTH         ) CRANK_ADDITIONAL_TOOTH );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_TOOTH_AFTER_GAP          ) CRANK_TOOTH_AFTER_GAP          );
+    #pragma write h, ( );
+    #pragma write h, (/* Global Engine Position State values */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_ENG_POS_SEEK            ) ENG_POS_SEEK            );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_ENG_POS_FIRST_HALF_SYNC ) ENG_POS_FIRST_HALF_SYNC );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_ENG_POS_PRE_FULL_SYNC   ) ENG_POS_PRE_FULL_SYNC   );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_ENG_POS_FULL_SYNC       ) ENG_POS_FULL_SYNC       );
+    #pragma write h, ( );
+    #pragma write h, (#endif );
+    
+    /*********************************************************************
+     *
+     * Copyright:
+     *	Freescale Semiconductor, INC. All Rights Reserved.
+     *  You are hereby granted a copyright license to use, modify, and
+     *  distribute the SOFTWARE so long as this entire notice is
+     *  retained without alteration in any modified and/or redistributed
+     *  versions, and that such modified versions are clearly identified
+     *  as such. No licenses are granted by implication, estoppel or
+     *  otherwise under any patents or trademarks of Freescale
+     *  Semiconductor, Inc. This software is provided on an "AS IS"
+     *  basis and without warranty.
+     *
+     *  To the maximum extent permitted by applicable law, Freescale
+     *  Semiconductor DISCLAIMS ALL WARRANTIES WHETHER EXPRESS OR IMPLIED,
+     *  INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A
+     *  PARTICULAR PURPOSE AND ANY WARRANTY AGAINST INFRINGEMENT WITH
+     *  REGARD TO THE SOFTWARE (INCLUDING ANY MODIFIED VERSIONS THEREOF)
+     *  AND ANY ACCOMPANYING WRITTEN MATERIALS.
+     *
+     *  To the maximum extent permitted by applicable law, IN NO EVENT
+     *  SHALL Freescale Semiconductor BE LIABLE FOR ANY DAMAGES WHATSOEVER
+     *  (INCLUDING WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS,
+     *  BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR OTHER
+     *  PECUNIARY LOSS) ARISING OF THE USE OR INABILITY TO USE THE SOFTWARE.
+     *
+     *  Freescale Semiconductor assumes no responsibility for the
+     *  maintenance and support of this software
+     ********************************************************************/
+    
+    /*******************************************************************************
+    *
+    *  REVISION HISTORY:
+    *
+    *  FILE OWNER: Milan Brejl [r54529]
+    *  Revision 1.2  2015/09/01  r54529
+    *  Output parameter last_tooth_period_norm added.
+    *
+    *  Revision 1.11  2015/06/29  r54529
+    *  eTPU compiler 10.2.2, minor change at line 579.
+    *
+    *  Revision 1.1  2014/10/27  r54529
+    *  Crank with an additional tooth generated (teeth_till_gap + 1)*tcr2_ticks_per_tooth ticks per 360deg.
+    *  Fixed, parameter tcr2_ticks_per_add_tooth added.
+    *
+    *  Revision 1.0  2014/03/16  r54529
+    *  Bug fix - tooth_period_norm used for TRR calculation on tooth after gap.
+    *  Minor comment and formating improvements. MISRA compliance checked.
+    *  Ready for eTPU Engine Control Library release 1.0.
+    *
+    *  Revision 0.3  2013/11/27  r54529
+    *  Full precision of TRR calculation.
+    *  MISSCNT[2] supported - up to 7 missing teeth. teeth_in_gap replaced by misscnt_mask.  
+    *  
+    *  Revision 0.2  2013/08/14  r54529
+    *  TCR2 not reset on stall.
+    *
+    *  Revision 0.1  2012/06/12  r54529
+    *  Initial version.
+    *
+    *******************************************************************************/

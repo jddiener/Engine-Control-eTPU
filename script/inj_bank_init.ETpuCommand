@@ -1,0 +1,14 @@
+// File 'inj_bank_init.ETpuCommand'
+
+// this file expects the inj bank channel to be passed in the following define:
+// INJ_BANK_CHAN
+
+//*****************************************************************************
+// eTPU Channel INJ Configuration 
+//*****************************************************************************
+write_chan_base_addr(       INJ_BANK_CHAN, 0 );
+write_chan_func(            INJ_BANK_CHAN, FS_ETPU_INJ_FUNCTION_NUMBER );
+write_chan_entry_condition( INJ_BANK_CHAN, FS_ETPU_INJ_TABLE_SELECT );
+write_chan_mode(            INJ_BANK_CHAN, FS_ETPU_INJ_FM0_ACTIVE_HIGH + FS_ETPU_INJ_FM1_CHANNEL_BANK );
+write_chan_hsrr(            INJ_BANK_CHAN, FS_ETPU_INJ_HSR_INIT );
+write_chan_cpr(             INJ_BANK_CHAN, 1 );

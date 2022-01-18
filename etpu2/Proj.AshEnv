@@ -1,0 +1,227 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<user creator="ASH WARE, Inc." version="2.74.0.0">
+  <reparse_script_on_reset val="1" />
+  <source_code_search />
+  <app_dimensions x="1979" y="110" w="2601" h="1758" />
+  <splitter name="projectBtmSplitter" distance="898" total="1644" orientation="horizontal" />
+  <splitter name="projectRhtSplitter" parent="projectBtmSplitter" order="1" distance="323" total="2585" orientation="vertical" />
+  <splitter name="editSplitter" parent="projectRhtSplitter" order="2" distance="1088" total="2258" orientation="vertical" />
+  <splitter name="outputSplitter" parent="projectBtmSplitter" order="2" distance="1518" total="2585" orientation="vertical" />
+  <line_info_mgr />
+  <TabPage type="LogicAnalyzer" ctrl="output1TabControl">
+    <ScopeSettings selected_channel="0" selected_cursor="0" auto_scroll="True" first_chan="0" width="179" />
+    <ScopeTimes>
+      <LeftSide word_a="0" word_b="176080" word_c="4100043035" />
+      <Width word_a="0" word_b="63055" word_c="902125481" />
+      <LeftCursor word_a="0" word_b="21630" word_c="3593052903" />
+      <RightCursor word_a="0" word_b="110818" word_c="1702866390" />
+    </ScopeTimes>
+    <ClocksTimeOptions />
+    <TimeDisplayOptions />
+    <ThreadGroups>
+      <eTPU_A index="0" group_a="1" group_b="2" group_c="4" group_d="8" group_e="16" group_f="32" group_g="64" group_h="128" />
+    </ThreadGroups>
+    <ScopeChannels>
+      <ScopeChan index="0" name="_tcrclk" alias="crank" target_index="0" height="31" />
+      <ScopeChan index="1" name="_ch1.in" alias="cam" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="2" name="_ch10.out" alias="knock 1" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="3" name="_ch11.out" alias="knock 2" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="4" name="_ch2.out" alias="spark 1" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="5" name="_ch3.out" alias="spark 2" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="6" name="_ch4.out" alias="spark 3" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="7" name="_ch5.out" alias="spark 4" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="8" name="_ch6.out" alias="fuel 1" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="9" name="_ch7.out" alias="fuel 2" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="10" name="_ch8.out" alias="fuel 3" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="11" name="_ch9.out" alias="fuel 4" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="12" name="_ch14.out" alias="inj 1" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="13" name="_ch15.out" alias="inj 2" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="14" name="_ch16.out" alias="inj 3" target_index="0" height="31" chan_state_mask="255" />
+      <ScopeChan index="15" name="_ch17.out" alias="inj 4" target_index="0" height="31" chan_state_mask="255" />
+    </ScopeChannels>
+  </TabPage>
+  <TabPage type="TraceBuf" is_closed="true" ctrl="output2TabControl">
+    <eTPU_A />
+  </TabPage>
+  <TabPage type="Script" ctrl="edit1TabControl" file="..\script\Script.ETpuCommand" top_line="261" sel="true" focus="true" start_pos="10076" len="0" sel_text="" />
+  <TabPage type="Text" ctrl="edit2TabControl" file="..\ReadMe.txt" top_line="0" sel="true" start_pos="0" len="0" sel_text="" />
+  <TabPage type="SettingsGrid" ctrl="edit2TabControl" />
+  <TabPage type="Output" ctrl="output1TabControl" sel="true" />
+  <TabPage type="LocalVariable" ctrl="output2TabControl" target="0">
+    <Columns />
+  </TabPage>
+  <TabPage type="Watch" ctrl="output2TabControl">
+    <Columns />
+    <SymbolList>
+      <Symbol name="eng_pos_state" target="0" script="False" />
+    </SymbolList>
+  </TabPage>
+  <TabPage type="ChannelFrame" ctrl="output2TabControl" sel="true" target="0" channel="0">
+    <Columns width_1="279" width_3="192" />
+  </TabPage>
+  <TabPage type="Project" ctrl="projectTabControl" file="Proj.ETpuIdeProj" sel="true" />
+  <TabPage type="RegisterWindow" ctrl="projectTabControl" target_tag="eTpu" win_type="FTWT_REGISTER" target="eTPU_A" top_line="0" />
+  <selected_project_node name="CC: etpuc_crank.c" />
+  <!--Saved last-used directories-->
+  <last_dir type="SourceAsmGtm" dir="..\src\" />
+  <last_dir type="SourceH" dir="..\src\" />
+  <search_dialog case="true">
+    <find val="spark_local." />
+    <find val="verify_version" />
+    <find val="knock_local." />
+    <find val="inj_local." />
+    <find val="fuel_local." />
+    <find val="ERWB" />
+    <find val="crank_local." />
+    <find val="tg_local." />
+    <find val="cam_local." />
+    <find val="cam_local" />
+    <find val="log_idx" />
+    <find val="SINGLE_INJ_BASE_ADDR" />
+    <find val="tpr_str" />
+    <find val="CRANK_TOOTH_PER_BASE_ADDR" />
+    <find val="__ETPU2__" />
+    <find val="write" />
+    <find val="_ETPU__" />
+    <find val="_ETPU_" />
+    <find val="SPARK_ReadSparkParams" />
+    <replace val="spark_local." />
+    <replace val="verify_version" />
+    <replace val="knock_local." />
+    <replace val="inj_local." />
+    <replace val="fuel_local." />
+    <replace val="crank_local." />
+    <replace val="tg_local." />
+    <replace val="cam_local." />
+    <replace val="cam_local" />
+    <replace val="log_idx" />
+    <replace val="SINGLE_INJ_BASE_ADDR" />
+    <replace val="CRANK_TOOTH_PER_BASE_ADDR" />
+    <replace val="__TARGET_ETPU2__" />
+    <replace val="write" />
+    <replace val="__ETPU2__" />
+    <replace val="SPARK_ReadSparkParams" />
+    <directory val="C:\GIT\ASHWARE\Tests\Drivers\EnhancedEngineControl\etpu2\" />
+    <directory val="C:\ASHWARE\GIT\ASHWARE\DemosETpu\EngineControl_AN4907\etpu2\" />
+    <directory val="C:\Mtdt\DemosETpu\EngineControl_AN4907\etpu2\" />
+    <file_types val="*.c,*.h" />
+    <file_types val="*.ETpuCommand" />
+    <file_types val="*.Vector" />
+  </search_dialog>
+  <workshops enabled="False" />
+  <ide_is_setting>
+    <TPU_ALERT_ON_LSR_SET_WHEN_SET val="False" />
+    <ETPU_ALERT_ON_ANGLE_OVERFLOW val="False" />
+  </ide_is_setting>
+  <step_asm_multiple val="10" />
+  <step_angle_teeth_multiple val="3" />
+  <is_goto_abs_angle val="false" />
+  <goto_absolute_angle cycles="1" degrees="2" hundredths="3" />
+  <goto_delta_angle cycles="4" degrees="5" hundredths="6" />
+  <goto_absolute_time ks="0" sec="0" ms="250" us="0" ns="0" />
+  <goto_delta_time ks="0" sec="0" ms="0" us="10" ns="0" />
+  <is_goto_abs_time val="true" />
+  <goto_line_num val="10" />
+  <make_node target="eTPU_A" file="obj\etpuc_cam.eao" time="5249462317096604421">
+    <dependent_file file="..\src\etpuc_cam.c" time="5249462105886345673" />
+    <dependent_file file="..\..\..\..\Builds\Include\etpu_std.h" time="5249455410499695681" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Hw.h" time="5249459763007802942" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Lib.h" time="5249009246858268805" />
+    <dependent_file file="..\src\etpuc_cam.h" time="5249462234395290788" />
+    <dependent_file file="..\src\etpuc_crank.h" time="5249462177327297712" />
+    <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
+    <dependent_file file="Proj.ETpuIdeProj" time="5249462317093283759" />
+  </make_node>
+  <make_node target="eTPU_A" file="obj\etpuc_crank.eao" time="5249462317100985642">
+    <dependent_file file="..\src\etpuc_crank.c" time="5249462167843188293" />
+    <dependent_file file="..\..\..\..\Builds\Include\etpu_std.h" time="5249455410499695681" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Hw.h" time="5249459763007802942" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Lib.h" time="5249009246858268805" />
+    <dependent_file file="..\src\etpuc_crank.h" time="5249462177327297712" />
+    <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
+    <dependent_file file="Proj.ETpuIdeProj" time="5249462317093283759" />
+  </make_node>
+  <make_node target="eTPU_A" file="obj\etpuc_crank_emul.eao" time="5249462317104373543">
+    <dependent_file file="..\src\etpuc_crank_emul.c" time="5249462230203240559" />
+    <dependent_file file="..\..\..\..\Builds\Include\etpu_std.h" time="5249455410499695681" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Hw.h" time="5249459763007802942" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Lib.h" time="5249009246858268805" />
+    <dependent_file file="..\src\etpuc_crank.h" time="5249462177327297712" />
+    <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
+    <dependent_file file="Proj.ETpuIdeProj" time="5249462317093283759" />
+  </make_node>
+  <make_node target="eTPU_A" file="obj\etpuc_fuel.eao" time="5249462317108045035">
+    <dependent_file file="..\src\etpuc_fuel.c" time="5249462229544508503" />
+    <dependent_file file="..\..\..\..\Builds\Include\etpu_std.h" time="5249455410499695681" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Hw.h" time="5249459763007802942" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Lib.h" time="5249009246858268805" />
+    <dependent_file file="..\src\etpuc_fuel.h" time="5249462222780339267" />
+    <dependent_file file="..\src\etpuc_crank.h" time="5249462177327297712" />
+    <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
+    <dependent_file file="Proj.ETpuIdeProj" time="5249462317093283759" />
+  </make_node>
+  <make_node target="eTPU_A" file="obj\etpuc_inj.eao" time="5249462317111365249">
+    <dependent_file file="..\src\etpuc_inj.c" time="5249462251115876778" />
+    <dependent_file file="..\..\..\..\Builds\Include\etpu_std.h" time="5249455410499695681" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Hw.h" time="5249459763007802942" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Lib.h" time="5249009246858268805" />
+    <dependent_file file="..\src\etpuc_inj.h" time="5249462251259014073" />
+    <dependent_file file="..\src\etpuc_crank.h" time="5249462177327297712" />
+    <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
+    <dependent_file file="Proj.ETpuIdeProj" time="5249462317093283759" />
+  </make_node>
+  <make_node target="eTPU_A" file="obj\etpuc_knock.eao" time="5249462317114946371">
+    <dependent_file file="..\src\etpuc_knock.c" time="5249462263019543284" />
+    <dependent_file file="..\..\..\..\Builds\Include\etpu_std.h" time="5249455410499695681" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Hw.h" time="5249459763007802942" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Lib.h" time="5249009246858268805" />
+    <dependent_file file="..\src\etpuc_knock.h" time="5249462258339538716" />
+    <dependent_file file="..\src\etpuc_crank.h" time="5249462177327297712" />
+    <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
+    <dependent_file file="Proj.ETpuIdeProj" time="5249462317093283759" />
+  </make_node>
+  <make_node target="eTPU_A" file="obj\etpuc_set.eao" time="5249462317117616731">
+    <dependent_file file="..\src\etpuc_set.c" time="5249462265490673813" />
+    <dependent_file file="..\..\..\..\Builds\Include\etpu_std.h" time="5249455410499695681" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Hw.h" time="5249459763007802942" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Lib.h" time="5249009246858268805" />
+    <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
+    <dependent_file file="Proj.ETpuIdeProj" time="5249462317093283759" />
+  </make_node>
+  <make_node target="eTPU_A" file="obj\etpuc_spark.eao" time="5249462317121643797">
+    <dependent_file file="..\src\etpuc_spark.c" time="5249462293192392460" />
+    <dependent_file file="..\..\..\..\Builds\Include\etpu_std.h" time="5249455410499695681" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Hw.h" time="5249459763007802942" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Lib.h" time="5249009246858268805" />
+    <dependent_file file="..\src\etpuc_spark.h" time="5249462277985426803" />
+    <dependent_file file="..\src\etpuc_crank.h" time="5249462177327297712" />
+    <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
+    <dependent_file file="Proj.ETpuIdeProj" time="5249462317093283759" />
+  </make_node>
+  <make_node target="eTPU_A" file="obj\etpuc_tg.eao" time="5249462317124594770">
+    <dependent_file file="..\src\etpuc_tg.c" time="5249462105886345673" />
+    <dependent_file file="..\..\..\..\Builds\Include\etpu_std.h" time="5249455410499695681" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Hw.h" time="5249459763007802942" />
+    <dependent_file file="..\..\..\..\Builds\Include\ETpu_Lib.h" time="5249009246858268805" />
+    <dependent_file file="..\src\etpuc_tg.h" time="5249462102207106027" />
+    <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
+    <dependent_file file="Proj.ETpuIdeProj" time="5249462317093283759" />
+  </make_node>
+  <source_file name="..\ReadMe.txt" tool="None" />
+  <source_file name="MyCode_ana.html" tool="None" />
+  <source_file name="MyCode_defines.h" tool="None" />
+  <source_file name="crank_init.ETpuCommand" tool="None" />
+  <source_file name="cam_init.ETpuCommand" tool="None" />
+  <source_file name="spark_init.ETpuCommand" tool="None" />
+  <source_file name="fuel_init.ETpuCommand" tool="None" />
+  <source_file name="knock_init.ETpuCommand" tool="None" />
+  <source_file name="inj_bank_init.ETpuCommand" tool="None" />
+  <source_file name="inj_tab_init.ETpuCommand" tool="None" />
+  <source_file name="inj_chan_init.ETpuCommand" tool="None" />
+  <source_file name="..\API\crank\etpu_crank.h" tool="None" />
+  <!--=======================================================-->
+  <!--======    START TARGET-SPECIFIC SETTINGS        =======-->
+  <target name="eTPU_A" />
+  <!--======    END TARGET-SPECIFIC SETTINGS          =======-->
+  <!--=======================================================-->
+</user>

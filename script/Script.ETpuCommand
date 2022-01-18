@@ -1,0 +1,314 @@
+// EngineControl.ETpuCommand
+//
+// master script to initialize and demo engine startup using
+// the Freecale eTPU Engine Control Library
+
+#if defined(MPC5554_B)
+#include "..\etpu1\cpu\etpu_cam_auto.h"
+#include "..\etpu1\cpu\etpu_crank_auto.h"
+#include "..\etpu1\cpu\etpu_fuel_auto.h"
+#include "..\etpu1\cpu\etpu_inj_auto.h"
+#include "..\etpu1\cpu\etpu_knock_auto.h"
+#include "..\etpu1\cpu\etpu_spark_auto.h"
+#include "..\etpu1\cpu\etpu_tg_auto.h"
+#include "..\etpu1\MyCode_defines.h"
+#elif defined(MPC5674F_2)
+#include "..\etpu2\cpu\etpu_cam_auto.h"
+#include "..\etpu2\cpu\etpu_crank_auto.h"
+#include "..\etpu2\cpu\etpu_fuel_auto.h"
+#include "..\etpu2\cpu\etpu_inj_auto.h"
+#include "..\etpu2\cpu\etpu_knock_auto.h"
+#include "..\etpu2\cpu\etpu_spark_auto.h"
+#include "..\etpu2\cpu\etpu_tg_auto.h"
+#include "..\etpu2\MyCode_defines.h"
+#endif
+
+//*******************************************************************************
+// Constants 
+//*******************************************************************************
+#define TCR1_FREQ_HZ                                           100000000
+#define TEETH_TILL_GAP                                                35
+#define TEETH_IN_GAP                                                   1
+#define TEETH_PER_CYCLE                                               72
+#define TCR2_TICKS_PER_TOOTH                                         100
+#define TCR2_TICKS_PER_CYCLE    (TEETH_PER_CYCLE * TCR2_TICKS_PER_TOOTH)
+
+//*******************************************************************************
+// Definitions.
+//*******************************************************************************
+#define CRANK_CHAN                0
+#define CAM_CHAN                  1
+#define SPARK_1_CHAN              2
+#define SPARK_2_CHAN              3
+#define SPARK_3_CHAN              4
+#define SPARK_4_CHAN              5
+#define FUEL_1_CHAN               6
+#define FUEL_2_CHAN               7
+#define FUEL_3_CHAN               8
+#define FUEL_4_CHAN               9
+#define KNOCK_1_CHAN             10
+#define KNOCK_2_CHAN             11
+#define INJ_BANK_1_CHAN          12
+#define INJ_BANK_2_CHAN          13
+#define INJ_1_CHAN               14
+#define INJ_2_CHAN               15
+#define INJ_3_CHAN               16
+#define INJ_4_CHAN               17
+#define TG_CRANK_CHAN            31
+#define TG_CAM_CHAN              30
+
+#define CRANK_BASE_ADDR       _CHANNEL_FRAME_1ETPU_BASE_ADDR
+#define CAM_BASE_ADDR         (CRANK_BASE_ADDR + _FRAME_SIZE_CRANK_ + TEETH_PER_CYCLE * 4)
+#define SPARK_1_BASE_ADDR     (CAM_BASE_ADDR + _FRAME_SIZE_CAM_ + 8 * 4)
+#define SPARK_2_BASE_ADDR     (SPARK_1_BASE_ADDR + _FRAME_SIZE_SPARK_ + 1 * FS_ETPU_SINGLE_SPARK_STRUCT_SIZE)
+#define SPARK_3_BASE_ADDR     (SPARK_2_BASE_ADDR + _FRAME_SIZE_SPARK_ + 1 * FS_ETPU_SINGLE_SPARK_STRUCT_SIZE)
+#define SPARK_4_BASE_ADDR     (SPARK_3_BASE_ADDR + _FRAME_SIZE_SPARK_ + 1 * FS_ETPU_SINGLE_SPARK_STRUCT_SIZE)
+#define FUEL_1_BASE_ADDR      (SPARK_4_BASE_ADDR + _FRAME_SIZE_SPARK_ + 1 * FS_ETPU_SINGLE_SPARK_STRUCT_SIZE)
+#define FUEL_2_BASE_ADDR      (FUEL_1_BASE_ADDR + _FRAME_SIZE_FUEL_)
+#define FUEL_3_BASE_ADDR      (FUEL_2_BASE_ADDR + _FRAME_SIZE_FUEL_)
+#define FUEL_4_BASE_ADDR      (FUEL_3_BASE_ADDR + _FRAME_SIZE_FUEL_)
+#define KNOCK_1_BASE_ADDR     (FUEL_4_BASE_ADDR + _FRAME_SIZE_FUEL_)
+#define KNOCK_2_BASE_ADDR     (KNOCK_1_BASE_ADDR + _FRAME_SIZE_KNOCK_ + 2 * FS_ETPU_KNOCK_WINDOW_STRUCT_SIZE)
+#define INJ_1_BASE_ADDR       (KNOCK_2_BASE_ADDR + _FRAME_SIZE_KNOCK_ + 2 * FS_ETPU_KNOCK_WINDOW_STRUCT_SIZE)
+#define INJ_2_BASE_ADDR       (INJ_1_BASE_ADDR + _FRAME_SIZE_INJ_)
+#define INJ_3_BASE_ADDR       (INJ_2_BASE_ADDR + _FRAME_SIZE_INJ_)
+#define INJ_4_BASE_ADDR       (INJ_3_BASE_ADDR + _FRAME_SIZE_INJ_)
+#define INJ_TAB_BASE_ADDR     (INJ_4_BASE_ADDR + _FRAME_SIZE_INJ_)
+#define TG_BASE_ADDR          (INJ_TAB_BASE_ADDR + 0x100)
+
+#define TDC_1_DEG                90
+#define TDC_2_DEG               270
+#define TDC_3_DEG               450
+#define TDC_4_DEG               630
+
+//*******************************************************************************
+// Conversion Functions 
+//*******************************************************************************
+#define msec2tcr1(val) ((TCR1_FREQ_HZ / 1000) * val )
+#define usec2tcr1(val) ((TCR1_FREQ_HZ / 1000) * val / 1000)
+#define nsec2tcr1(val) ((TCR1_FREQ_HZ / 1000) * val / 1000000)
+
+#define deg2tcr2(val)  (val * TCR2_TICKS_PER_CYCLE / 720)
+
+#define ufract24(val) (val * 0xFFFFFF)
+
+#define rpm2tp(val)   (TCR1_FREQ_HZ / val * 60 / (TEETH_PER_CYCLE / 2))
+
+#if 0
+proc tp2rpm { val } {
+  return [expr round($::TCR1_FREQ_HZ / $val * 60 / ($::TEETH_PER_CYCLE/2) ) ]
+}
+#endif
+
+#define STRINGIFY(X) STRINGIFY_HELPER(X)
+#define STRINGIFY_HELPER(X) #X
+
+
+//*****************************************************************************
+// eTPU Engine Configuration
+//*****************************************************************************
+write_entry_table_base_addr(     0x0000);
+//write_engine_relative_base_addr( 0x1000);
+
+//*****************************************************************************
+// eTPU Engine Clock and Time Base Configuration 
+//*****************************************************************************
+set_clk_period(       5000000);  // 200MHz
+write_tcr1_control(   2);        // TCR1: system_clock/ 2 = 100MHz
+write_tcr1_prescaler( 1);        // TCR1 =      100MHz/ 1 = 100MHz
+write_tcr2_control(   2);        // TCR2: falling external
+write_tcr2_prescaler( 1);        // 
+write_angle_mode(     1);        // Angle Mode: Channel 0, TCRCLK input
+
+//*****************************************************************************
+// eTPU Module Configuration
+//*****************************************************************************
+write_global_time_base_enable( 1);
+
+
+//*****************************************************************************
+// Channel Initializations
+//*****************************************************************************
+// initialize Tooth Generator
+#include "tg_init.ETpuCommand"
+// connect TG outputs to TCRCLK and CAM input
+place_buffer( (TG_CRANK_CHAN+32), 64);
+place_buffer( (TG_CAM_CHAN+32),   CAM_CHAN);
+
+// initalize CRANK and CAM
+#include "crank_init.ETpuCommand"
+#include "cam_init.ETpuCommand"
+//crank_init $::CRANK_CHAN     $::CRANK_BASE_ADDR
+//cam_init   $::CAM_CHAN       $::CAM_BASE_ADDR
+
+// initalize SPARKs
+#define SPARK_CHAN       SPARK_1_CHAN
+#define SPARK_BASE_ADDR  SPARK_1_BASE_ADDR
+#define TDC_DEG          TDC_1_DEG
+#include "spark_init.ETpuCommand"
+#undef SPARK_CHAN
+#undef SPARK_BASE_ADDR
+#undef TDC_DEG
+#define SPARK_CHAN       SPARK_2_CHAN
+#define SPARK_BASE_ADDR  SPARK_2_BASE_ADDR
+#define TDC_DEG          TDC_2_DEG
+#include "spark_init.ETpuCommand"
+#undef SPARK_CHAN
+#undef SPARK_BASE_ADDR
+#undef TDC_DEG
+#define SPARK_CHAN       SPARK_3_CHAN
+#define SPARK_BASE_ADDR  SPARK_3_BASE_ADDR
+#define TDC_DEG          TDC_3_DEG
+#include "spark_init.ETpuCommand"
+#undef SPARK_CHAN
+#undef SPARK_BASE_ADDR
+#undef TDC_DEG
+#define SPARK_CHAN       SPARK_4_CHAN
+#define SPARK_BASE_ADDR  SPARK_4_BASE_ADDR
+#define TDC_DEG          TDC_4_DEG
+#include "spark_init.ETpuCommand"
+#undef SPARK_CHAN
+#undef SPARK_BASE_ADDR
+#undef TDC_DEG
+
+// initalize FUELs
+#define FUEL_CHAN       FUEL_1_CHAN
+#define FUEL_BASE_ADDR  FUEL_1_BASE_ADDR
+#define TDC_DEG         TDC_1_DEG
+#include "fuel_init.ETpuCommand"
+#undef FUEL_CHAN
+#undef FUEL_BASE_ADDR
+#undef TDC_DEG
+#define FUEL_CHAN       FUEL_2_CHAN
+#define FUEL_BASE_ADDR  FUEL_2_BASE_ADDR
+#define TDC_DEG         TDC_2_DEG
+#include "fuel_init.ETpuCommand"
+#undef FUEL_CHAN
+#undef FUEL_BASE_ADDR
+#undef TDC_DEG
+#define FUEL_CHAN       FUEL_3_CHAN
+#define FUEL_BASE_ADDR  FUEL_3_BASE_ADDR
+#define TDC_DEG         TDC_3_DEG
+#include "fuel_init.ETpuCommand"
+#undef FUEL_CHAN
+#undef FUEL_BASE_ADDR
+#undef TDC_DEG
+#define FUEL_CHAN       FUEL_4_CHAN
+#define FUEL_BASE_ADDR  FUEL_4_BASE_ADDR
+#define TDC_DEG         TDC_4_DEG
+#include "fuel_init.ETpuCommand"
+#undef FUEL_CHAN
+#undef FUEL_BASE_ADDR
+#undef TDC_DEG
+
+// initalize KNOCKs
+#define KNOCK_CHAN       KNOCK_1_CHAN
+#define KNOCK_BASE_ADDR  KNOCK_1_BASE_ADDR
+#define TDC_DEG          TDC_1_DEG
+#include "knock_init.ETpuCommand"
+#undef KNOCK_CHAN
+#undef KNOCK_BASE_ADDR
+#undef TDC_DEG
+#define KNOCK_CHAN       KNOCK_2_CHAN
+#define KNOCK_BASE_ADDR  KNOCK_2_BASE_ADDR
+#define TDC_DEG          TDC_2_DEG
+#include "knock_init.ETpuCommand"
+#undef KNOCK_CHAN
+#undef KNOCK_BASE_ADDR
+#undef TDC_DEG
+
+// initalize INJs
+// bank chans
+#define INJ_BANK_CHAN       INJ_BANK_1_CHAN
+#include "inj_bank_init.ETpuCommand"
+#undef INJ_BANK_CHAN
+#define INJ_BANK_CHAN       INJ_BANK_2_CHAN
+#include "inj_bank_init.ETpuCommand"
+#undef INJ_BANK_CHAN
+// inj table
+#include "inj_tab_init.ETpuCommand"
+// inj chans
+#define INJ_CHAN       INJ_1_CHAN
+#define INJ_BASE_ADDR  INJ_1_BASE_ADDR
+#define TDC_DEG        TDC_1_DEG
+#include "inj_chan_init.ETpuCommand"
+#undef INJ_CHAN
+#undef INJ_BASE_ADDR
+#undef TDC_DEG
+#define INJ_CHAN       INJ_2_CHAN
+#define INJ_BASE_ADDR  INJ_2_BASE_ADDR
+#define TDC_DEG        TDC_2_DEG
+#include "inj_chan_init.ETpuCommand"
+#undef INJ_CHAN
+#undef INJ_BASE_ADDR
+#undef TDC_DEG
+#define INJ_CHAN       INJ_3_CHAN
+#define INJ_BASE_ADDR  INJ_3_BASE_ADDR
+#define TDC_DEG        TDC_3_DEG
+#include "inj_chan_init.ETpuCommand"
+#undef INJ_CHAN
+#undef INJ_BASE_ADDR
+#undef TDC_DEG
+#define INJ_CHAN       INJ_4_CHAN
+#define INJ_BASE_ADDR  INJ_4_BASE_ADDR
+#define TDC_DEG        TDC_4_DEG
+#include "inj_chan_init.ETpuCommand"
+#undef INJ_CHAN
+#undef INJ_BASE_ADDR
+#undef TDC_DEG
+
+
+// INITIALIZATION DONE, LET IT RUN!
+
+
+// command sync (crank just reached pre-full-sync)
+at_time(344000);
+write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_TCR2_ADJUSTMENT,  deg2tcr2(360) );
+write_chan_hsrr(   CRANK_CHAN, FS_ETPU_CRANK_HSR_SET_SYNC );
+
+at_time(450000);
+// set a new RPM target of 1950
+write_val("@" STRINGIFY(TG_CRANK_CHAN) ".accel_ratio", "0.02" );
+write_chan_data24( TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_TOOTH_PERIOD_TARGET, rpm2tp(1950) );
+
+F64 rpm;
+F64 tooth_period;
+U32 tooth_per_sync;
+U32 crank_state;
+// run rpms up and down
+while (1)
+{
+    tooth_period = read_chan_data_u24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_LAST_TOOTH_PERIOD );
+    tooth_per_sync = read_chan_data_u8( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_TEETH_PER_SYNC );
+    
+    crank_state = read_chan_data_u8( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_STATE );
+    if (crank_state == 7)
+    {
+        // only calculate the RPM from the tooth period when in regular counting mode
+        rpm = (1.0 / (tooth_period * tooth_per_sync / TCR1_FREQ_HZ)) * 60;
+        if (rpm < 2000)
+        {
+            // passed low threshold, accelerate
+            write_chan_data24( TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_TOOTH_PERIOD_TARGET, rpm2tp(4550) );
+        }
+        else if (rpm > 4500)
+        {
+            // passed high threshold, decelerate
+            write_chan_data24( TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_TOOTH_PERIOD_TARGET, rpm2tp(1950) );
+        }
+    }
+    
+    // check/update every 1000us
+    wait_time(1000);
+    F64 current_time;
+    current_time = read_time();
+    if (current_time >= 1000000.0)
+        break;
+}
+
+
+#ifdef _ASH_WARE_AUTO_RUN_
+exit();
+#else
+print("Demo is done!!");
+#endif // _ASH_WARE_AUTO_RUN_

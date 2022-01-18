@@ -1,0 +1,37 @@
+// File 'knock_init.ETpuCommand'
+
+// this file expects the knock channel, base address, and TDC ref angle to be passed in 
+// the following defines:
+// KNOCK_CHAN
+// KNOCK_BASE_ADDR
+// TDC_DEG
+
+//*****************************************************************************
+// eTPU Channel KNOCK Configuration 
+//*****************************************************************************
+write_chan_base_addr(       KNOCK_CHAN, KNOCK_BASE_ADDR );
+write_chan_func(            KNOCK_CHAN, FS_ETPU_KNOCK_FUNCTION_NUMBER );
+write_chan_entry_condition( KNOCK_CHAN, FS_ETPU_KNOCK_TABLE_SELECT );
+write_chan_mode(            KNOCK_CHAN, FS_ETPU_KNOCK_FM0_ACTIVE_HIGH + FS_ETPU_KNOCK_FM1_MODE_TRIGGER );
+write_chan_hsrr(            KNOCK_CHAN, FS_ETPU_KNOCK_HSR_INIT );
+write_chan_cpr(             KNOCK_CHAN, 1 );
+  
+//*****************************************************************************
+// eTPU Channel KNOCK Parameters Initialization
+//*****************************************************************************
+write_chan_data24( KNOCK_CHAN, FS_ETPU_KNOCK_OFFSET_P_WINDOW_FIRST,       KNOCK_BASE_ADDR + FS_ETPU_KNOCK_NUM_PARMS );
+write_chan_data24( KNOCK_CHAN, FS_ETPU_KNOCK_OFFSET_P_WINDOW,             0 );
+write_chan_data24( KNOCK_CHAN, FS_ETPU_KNOCK_OFFSET_TDC_ANGLE,            deg2tcr2(TDC_DEG) );
+write_chan_data24( KNOCK_CHAN, FS_ETPU_KNOCK_OFFSET_TDC_ANGLE_ACTUAL,     0 );
+write_chan_data24( KNOCK_CHAN, FS_ETPU_KNOCK_OFFSET_TCR2_WINDOW_START,    0 );
+write_chan_data24( KNOCK_CHAN, FS_ETPU_KNOCK_OFFSET_TCR2_WINDOW_END,      0 );
+write_chan_data24( KNOCK_CHAN, FS_ETPU_KNOCK_OFFSET_TRIGGER_PERIOD,       usec2tcr1(100) );
+write_chan_data8(  KNOCK_CHAN, FS_ETPU_KNOCK_OFFSET_WINDOW_COUNT,         2 );
+write_chan_data8(  KNOCK_CHAN, FS_ETPU_KNOCK_OFFSET_WINDOW_COUNTER,       0 );
+write_chan_data8(  KNOCK_CHAN, FS_ETPU_KNOCK_OFFSET_IRQ_DMA_OPTIONS,      FS_ETPU_KNOCK_IRQ_AT_WINDOW_END );
+  
+write_global_data24( KNOCK_BASE_ADDR + FS_ETPU_KNOCK_NUM_PARMS + 0 * FS_ETPU_KNOCK_WINDOW_STRUCT_SIZE + FS_ETPU_KNOCK_WINDOW_OFFSET_START,   deg2tcr2(    0) );
+write_global_data24( KNOCK_BASE_ADDR + FS_ETPU_KNOCK_NUM_PARMS + 0 * FS_ETPU_KNOCK_WINDOW_STRUCT_SIZE + FS_ETPU_KNOCK_WINDOW_OFFSET_WIDTH,   deg2tcr2(  120) );
+  
+write_global_data24( KNOCK_BASE_ADDR + FS_ETPU_KNOCK_NUM_PARMS + 1 * FS_ETPU_KNOCK_WINDOW_STRUCT_SIZE + FS_ETPU_KNOCK_WINDOW_OFFSET_START,   deg2tcr2( -360) );
+write_global_data24( KNOCK_BASE_ADDR + FS_ETPU_KNOCK_NUM_PARMS + 1 * FS_ETPU_KNOCK_WINDOW_STRUCT_SIZE + FS_ETPU_KNOCK_WINDOW_OFFSET_WIDTH,   deg2tcr2(  120) );

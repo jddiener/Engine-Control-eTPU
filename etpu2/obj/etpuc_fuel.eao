@@ -1,0 +1,2005 @@
+// assembly code generated from source file etpuc_fuel.c
+
+.file "..\..\src\etpuc_fuel.c";
+.producer ETEC_cc;
+.version 3, 0, A;
+.target ETPU2;
+.compdir "C:\GIT\ASHWARE\Tests\Drivers\EnhancedEngineControl\src\";
+
+.regisgp TPR, 0;
+.regisgp TRR, 0;
+.regisgp TCR1, 0;
+.regisgp TCR2, 0;
+
+.file "..\..\src\etpuc_fuel.c";
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\etpu_std.h";
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\ETpu_Hw.h";
+.def register_a; .scl 13; .type 0x4; .endef;
+.def register_ac; .scl 13; .type 0x4; .endef;
+.def registera; .scl 13; .type 0x4; .endef;
+.def register_b; .scl 13; .type 0x4; .endef;
+.def register_c; .scl 13; .type 0x4; .endef;
+.def register_d; .scl 13; .type 0x4; .endef;
+.def register_chan; .scl 13; .type 0xc; .endef;
+.def register_diob; .scl 13; .type 0x4; .endef;
+.def register_erta; .scl 13; .type 0x4; .endef;
+.def register_ertb; .scl 13; .type 0x4; .endef;
+.def register_link; .scl 13; .type 0xc; .endef;
+.def register_mach; .scl 13; .type 0x4; .endef;
+.def register_macl; .scl 13; .type 0x4; .endef;
+.def register_p; .scl 13; .type 0x4; .endef;
+.def register_p23_0; .scl 13; .type 0x4; .endef;
+.def register_rar; .scl 13; .type 0x4; .endef;
+.def register_sr; .scl 13; .type 0x4; .endef;
+.def register_tcr1; .scl 13; .type 0x4; .endef;
+.def register_tcr2; .scl 13; .type 0x4; .endef;
+.def register_tpr; .scl 13; .type 0xd; .endef;
+.def register_trr; .scl 13; .type 0x4; .endef;
+.def register_chan_base; .scl 13; .type 0xe; .endef;
+.def register_engine_base; .scl 13; .type 0xe; .endef;
+.def register_p31_24; .scl 13; .type 0x2; .endef;
+.def register_p23_16; .scl 13; .type 0x2; .endef;
+.def register_p15_8; .scl 13; .type 0x2; .endef;
+.def register_p7_0; .scl 13; .type 0x2; .endef;
+.def register_p31_16; .scl 13; .type 0x3; .endef;
+.def register_p15_0; .scl 13; .type 0x3; .endef;
+.def register_p31_0; .scl 13; .type 0x5; .endef;
+.def register_cc; .scl 13; .tag cc_struct; .type 0x0; .endef;
+
+.def tpr_struct; .scl 10; .type 0x8; .size 2; .endef;
+.def TICKS; .val 0x6; .scl 18; .size 10; .type 0xd; .endef;
+.def TPR10; .val 0x5; .scl 18; .size 1; .type 0xd; .endef;
+.def HOLD; .val 0x4; .scl 18; .size 1; .type 0xd; .endef;
+.def IPH; .val 0x3; .scl 18; .size 1; .type 0xd; .endef;
+.def MISSCNT; .val 0x1; .scl 18; .size 2; .type 0xd; .endef;
+.def LAST; .val 0x0; .scl 18; .size 1; .type 0xd; .endef;
+.def; .eos; .scl 102; .endef;
+
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\etpu_std.h";
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\ETpu_Lib.h";
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\etpu_std.h";
+.file "..\..\src\etpuc_fuel.c";
+.file "..\..\src\etpuc_fuel.h";
+.line 102;
+.def FUEL; .scl 201; .type 0x80000006; .size 72; .endef;
+.line 74;
+.def _FUEL_AW613E_INIT_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000022; .endef;
+.line 75;
+.def _FUEL_AW613E_STOP_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000022; .endef;
+.line 76;
+.def _FUEL_AW613E_UPDATE_INACTIVE_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000022; .endef;
+.line 77;
+.def _FUEL_AW613E_UPDATE_ACTIVE_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000022; .endef;
+.line 78;
+.def _FUEL_AW613E_PULSE_START_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000022; .endef;
+.line 79;
+.def _FUEL_AW613E_PULSE_END_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000022; .endef;
+.line 80;
+.def _FUEL_AW613E_STOP_ANGLE_INACTIVE_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000022; .endef;
+.line 81;
+.def _FUEL_AW613E_STOP_ANGLE_ACTIVE_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000022; .endef;
+.line 82;
+.def _FUEL_AW613E_RECALC_ANGLE_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000022; .endef;
+.line 89;
+.def _FUEL_AW613E_OnRecalcAngle_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000029; .endef;
+.line 90;
+.def _FUEL_AW613E_OnStopAngle_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000029; .endef;
+.line 91;
+.def _FUEL_AW613E_ScheduleRecalc_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000029; .endef;
+.line 92;
+.def _FUEL_AW613E_SchedulePulseEnd_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000029; .endef;
+.line 93;
+.def _FUEL_AW613E_ScheduleAdditionalPulse_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x80000029; .endef;
+.line 94;
+.def _FUEL_AW613E_OnPulseEnd_; .val 0xffffffff; .scl 5; .etpuclass FUEL; .type 0x21; .endef;
+
+.file "..\..\src\etpuc_fuel.c";
+.file "..\..\src\etpuc_crank.h";
+.line 163;
+.def CRANK; .scl 201; .type 0x80000006; .size 92; .endef;
+.line 123;
+.def _CRANK_AW613E_INIT_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 124;
+.def _CRANK_AW613E_ANGLE_ADJUST_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 125;
+.def _CRANK_AW613E_CRANK_WITH_GAP_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 126;
+.def _CRANK_AW613E_CRANK_WITH_ADDITIONAL_TOOTH_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 129;
+.def _CRANK_AW613E_INIT_EMUL_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 130;
+.def _CRANK_AW613E_ANGLE_ADJUST_EMUL_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 131;
+.def _CRANK_AW613E_SET_SPEED_EMUL_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 132;
+.def _CRANK_AW613E_CRANK_WITH_GAP_EMUL_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 140;
+.def _CRANK_AW613E_ToothArray_Log_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x21; .endef;
+.line 141;
+.def _CRANK_AW613E_Set_TRR_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x21; .endef;
+.line 146;
+.def _CRANK_AW613E_Window_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000029; .endef;
+.line 148;
+.def _CRANK_AW613E_WindowAcrossGap_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000029; .endef;
+.line 150;
+.def _CRANK_AW613E_WindowCloseAt_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000029; .endef;
+.line 153;
+.def _CRANK_AW613E_WindowClose_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000029; .endef;
+.line 154;
+.def _CRANK_AW613E_Stall_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000029; .endef;
+
+.file "..\..\src\etpuc_fuel.c";
+.file "..\..\src\etpuc_set.h";
+.file "..\..\src\etpuc_fuel.c";
+.line 571;
+.pragmawrite h, (::ETPUfilename (cpu/etpu_fuel_auto.h));
+.line 572;
+.pragmawrite h, (/**************************************************************** );
+.line 573;
+.pragmawrite h, (* WARNING: This file is automatically generated. DO NOT EDIT IT! );
+.line 574;
+.pragmawrite h, (*);
+.line 575;
+.pragmawrite h, (* FILE NAME: etpu_fuel.h  );
+.line 579;
+.pragmawrite h, (* ARCHITECTURE: eTPU2 );
+.line 581;
+.pragmawrite h, (*);
+.line 582;
+.pragmawrite h, (* This file was generated by: "etpuc_fuel.c" on "Jan 12 2022", "17:17:47" );
+.line 583;
+.pragmawrite h, (*);
+.line 584;
+.pragmawrite h, (* This file provides an interface between eTPU code and CPU       );
+.line 585;
+.pragmawrite h, (* code. All references to the eTPU function should be made with   );
+.line 586;
+.pragmawrite h, (* information in this file. This allows only symbolic             );
+.line 587;
+.pragmawrite h, (* information to be referenced which allows the eTPU code to be   );
+.line 588;
+.pragmawrite h, (* optimized without effecting the CPU code.                       );
+.line 589;
+.pragmawrite h, (*****************************************************************/);
+.line 590;
+.pragmawrite h, (#ifndef _ETPU_FUEL_AUTO_H_ );
+.line 591;
+.pragmawrite h, (#define _ETPU_FUEL_AUTO_H_ );
+.line 592;
+.pragmawrite h, ( );
+.line 593;
+.pragmawrite h, (/* Function Configuration Information */);
+.line 594;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_FUNCTION_NUMBER) ::ETPUfunctionnumber(FUEL) );
+.line 595;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_TABLE_SELECT) ::ETPUentrytype(FUEL) );
+.line 596;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_NUM_PARMS) ::ETPUram(FUEL) );
+.line 597;
+.pragmawrite h, ( );
+.line 598;
+.pragmawrite h, (/* Host Service Request Definitions */);
+.line 599;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_HSR_INIT)        7 );
+.line 600;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_HSR_STOP)        5 );
+.line 601;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_HSR_UPDATE)      3 );
+.line 602;
+.pragmawrite h, ( );
+.line 603;
+.pragmawrite h, (/* Function Mode Bit Definitions */);
+.line 604;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_FM0_ACTIVE_LOW)  0 );
+.line 605;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_FM0_ACTIVE_HIGH) 1 );
+.line 606;
+.pragmawrite h, ( );
+.line 607;
+.pragmawrite h, (/* Parameter Definitions */);
+.line 608;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_ERROR                     ) ::ETPUlocation (FUEL, error ) );
+.line 609;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_TDC_ANGLE                 ) ::ETPUlocation (FUEL, tdc_angle ) );
+.line 610;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_TDC_ANGLE_ACTUAL          ) ::ETPUlocation (FUEL, tdc_angle_actual ) );
+.line 611;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_ANGLE_NORMAL_END          ) ::ETPUlocation (FUEL, angle_normal_end ) );
+.line 612;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_ANGLE_STOP                ) ::ETPUlocation (FUEL, angle_stop ) );
+.line 613;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_ANGLE_OFFSET_RECALC       ) ::ETPUlocation (FUEL, angle_offset_recalc ) );
+.line 614;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_INJECTION_TIME            ) ::ETPUlocation (FUEL, injection_time ) );
+.line 615;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_COMPENSATION_TIME         ) ::ETPUlocation (FUEL, compensation_time ) );
+.line 616;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_INJECTION_TIME_MINIMUM    ) ::ETPUlocation (FUEL, injection_time_minimum ) );
+.line 617;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_OFF_TIME_MINIMUM          ) ::ETPUlocation (FUEL, off_time_minimum ) );
+.line 618;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_INJECTION_TIME_APPLIED    ) ::ETPUlocation (FUEL, injection_time_applied ) );
+.line 619;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_INJECTION_TIME_APPLIED_CPU) ::ETPUlocation (FUEL, injection_time_applied_cpu ) );
+.line 620;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_INJECTION_START_ANGLE     ) ::ETPUlocation (FUEL, injection_start_angle ) );
+.line 621;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_INJECTION_START_ANGLE_CPU ) ::ETPUlocation (FUEL, injection_start_angle_cpu ) );
+.line 622;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_PULSE_START_TIME          ) ::ETPUlocation (FUEL, pulse_start_time ) );
+.line 623;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_PULSE_END_TIME            ) ::ETPUlocation (FUEL, pulse_end_time ) );
+.line 624;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_GENERATION_DISABLE        ) ::ETPUlocation (FUEL, generation_disable ) );
+.line 625;
+.pragmawrite h, ( );
+.line 626;
+.pragmawrite h, (/* Error Flags Definitions */);
+.line 627;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_ERROR_STOP_ANGLE_APPLIED)       0x01);
+.line 628;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_ERROR_MINIMUM_INJ_TIME_APPLIED) 0x02);
+.line 629;
+.pragmawrite h, ( );
+.line 630;
+.pragmawrite h, (/* Generation Disable Definitions */);
+.line 631;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_GENERATION_ALLOWED)             0);
+.line 632;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_FUEL_GENERATION_DISABLED)            1);
+.line 633;
+.pragmawrite h, ( );
+.line 634;
+.pragmawrite h, (#endif );
+.file "..\..\src\etpuc_fuel.h";
+.line 47;
+.def _FUEL_AW613E_tdc_angle_; .val 0x1; .scl 3; .etpuclass FUEL; .type 0x4; .const 0x1; .endef;
+.line 48;
+.def _FUEL_AW613E_tdc_angle_actual_; .val 0x5; .scl 3; .etpuclass FUEL; .type 0x4; .endef;
+.line 49;
+.def _FUEL_AW613E_angle_normal_end_; .val 0x9; .scl 3; .etpuclass FUEL; .type 0x4; .const 0x1; .endef;
+.line 50;
+.def _FUEL_AW613E_angle_stop_; .val 0xd; .scl 3; .etpuclass FUEL; .type 0x4; .const 0x1; .endef;
+.line 51;
+.def _FUEL_AW613E_angle_offset_recalc_; .val 0x11; .scl 3; .etpuclass FUEL; .type 0x4; .const 0x1; .endef;
+.line 52;
+.def _FUEL_AW613E_injection_time_; .val 0x15; .scl 3; .etpuclass FUEL; .type 0x4; .const 0x1; .endef;
+.line 53;
+.def _FUEL_AW613E_compensation_time_; .val 0x19; .scl 3; .etpuclass FUEL; .type 0x4; .const 0x1; .endef;
+.line 54;
+.def _FUEL_AW613E_injection_time_minimum_; .val 0x1d; .scl 3; .etpuclass FUEL; .type 0x4; .const 0x1; .endef;
+.line 55;
+.def _FUEL_AW613E_off_time_minimum_; .val 0x21; .scl 3; .etpuclass FUEL; .type 0x4; .const 0x1; .endef;
+.line 56;
+.def _FUEL_AW613E_injection_time_applied_; .val 0x25; .scl 3; .etpuclass FUEL; .type 0x4; .endef;
+.line 57;
+.def _FUEL_AW613E_injection_time_applied_cpu_; .val 0x29; .scl 3; .etpuclass FUEL; .type 0x4; .endef;
+.line 58;
+.def _FUEL_AW613E_injection_start_angle_; .val 0x2d; .scl 3; .etpuclass FUEL; .type 0x4; .endef;
+.line 59;
+.def _FUEL_AW613E_injection_start_angle_cpu_; .val 0x31; .scl 3; .etpuclass FUEL; .type 0x4; .endef;
+.line 60;
+.def _FUEL_AW613E_pulse_start_time_; .val 0x35; .scl 3; .etpuclass FUEL; .type 0x4; .endef;
+.line 61;
+.def _FUEL_AW613E_pulse_end_time_; .val 0x39; .scl 3; .etpuclass FUEL; .type 0x4; .endef;
+.line 62;
+.def _FUEL_AW613E_generation_disable_; .val 0x0; .scl 3; .etpuclass FUEL; .type 0xc; .const 0x1; .endef;
+.line 63;
+.def _FUEL_AW613E_error_; .val 0x4; .scl 3; .etpuclass FUEL; .type 0xc; .endef;
+.line 64;
+.def _FUEL_AW613E_angle_stop_actual_last_; .val 0x3d; .scl 3; .etpuclass FUEL; .type 0x4; .endef;
+.line 65;
+.def _FUEL_AW613E_angle_offset_recalc_working_; .val 0x41; .scl 3; .etpuclass FUEL; .type 0x4; .endef;
+.line 66;
+.def _FUEL_AW613E_is_await_recalc_; .val 0x8; .scl 3; .etpuclass FUEL; .offset 0; .type 0xb; .endef;
+.line 67;
+.def _FUEL_AW613E_is_first_recalc_; .val 0x8; .scl 3; .etpuclass FUEL; .offset 1; .type 0xb; .endef;
+.line 101;
+.defentry; .etpuclass FUEL; .ettable FUEL; .endentry;
+.line 102;
+.def _FUEL_AW613E___STACKBASE_; .val 0x45; .scl 3; .etpuclass FUEL; .type 0x4; .endef;
+.file "..\..\src\etpuc_crank.h";
+.line -1;
+.def _AW_CHAN_ALIAS_0; .val 0x54; .scl 3; .etpuclass CRANK; .type 0xf; .endef;
+.line 81;
+.def _CRANK_AW613E_blank_time_; .val 0x1; .scl 3; .etpuclass CRANK; .type 0xe; .const 0x1; .endef;
+.line 82;
+.def _CRANK_AW613E_tcr1_clock_source_div1_; .val 0x0; .scl 3; .etpuclass CRANK; .type 0xc; .const 0x1; .endef;
+.line 83;
+.def _CRANK_AW613E_tcr2_ticks_per_tooth_; .val 0x5; .scl 3; .etpuclass CRANK; .type 0xe; .const 0x1; .endef;
+.line 84;
+.def _CRANK_AW613E_tcr2_ticks_per_add_tooth_; .val 0x9; .scl 3; .etpuclass CRANK; .type 0xe; .const 0x1; .endef;
+.line 85;
+.def _CRANK_AW613E_last_tooth_tcr1_time_; .val 0xd; .scl 3; .etpuclass CRANK; .type 0xe; .endef;
+.line 86;
+.def _CRANK_AW613E_last_tooth_period_; .val 0x11; .scl 3; .etpuclass CRANK; .type 0xe; .endef;
+.line 87;
+.def _CRANK_AW613E_last_tooth_period_norm_; .val 0x15; .scl 3; .etpuclass CRANK; .type 0xe; .endef;
+.line 88;
+.def _CRANK_AW613E_last_last_tooth_period_norm_; .val 0x19; .scl 3; .etpuclass CRANK; .type 0xe; .endef;
+.line 89;
+.def _CRANK_AW613E_additional_tooth_period_; .val 0x1d; .scl 3; .etpuclass CRANK; .type 0xe; .endef;
+.line 90;
+.def _CRANK_AW613E_tcr2_adjustment_; .val 0x21; .scl 3; .etpuclass CRANK; .type 0x4; .endef;
+.line 91;
+.def _CRANK_AW613E_gap_ratio_; .val 0x25; .scl 3; .etpuclass CRANK; .type 0x8000000f; .const 0x1; .endef;
+.line 92;
+.def _CRANK_AW613E_win_ratio_normal_; .val 0x29; .scl 3; .etpuclass CRANK; .type 0x8000000f; .const 0x1; .endef;
+.line 93;
+.def _CRANK_AW613E_win_ratio_across_gap_; .val 0x2d; .scl 3; .etpuclass CRANK; .type 0x8000000f; .const 0x1; .endef;
+.line 94;
+.def _CRANK_AW613E_win_ratio_after_gap_; .val 0x31; .scl 3; .etpuclass CRANK; .type 0x8000000f; .const 0x1; .endef;
+.line 95;
+.def _CRANK_AW613E_win_ratio_after_timeout_; .val 0x35; .scl 3; .etpuclass CRANK; .type 0x8000000f; .const 0x1; .endef;
+.line 96;
+.def _CRANK_AW613E_first_tooth_timeout_; .val 0x39; .scl 3; .etpuclass CRANK; .type 0xe; .const 0x1; .endef;
+.line 97;
+.def _CRANK_AW613E_link_cam_; .val 0x3c; .scl 3; .etpuclass CRANK; .type 0xf; .const 0x1; .endef;
+.line 98;
+.def _CRANK_AW613E_link_1_; .val 0x40; .scl 3; .etpuclass CRANK; .type 0xf; .const 0x1; .endef;
+.line 99;
+.def _CRANK_AW613E_link_2_; .val 0x44; .scl 3; .etpuclass CRANK; .type 0xf; .const 0x1; .endef;
+.line 100;
+.def _CRANK_AW613E_link_3_; .val 0x48; .scl 3; .etpuclass CRANK; .type 0xf; .const 0x1; .endef;
+.line 101;
+.def _CRANK_AW613E_link_4_; .val 0x4c; .scl 3; .etpuclass CRANK; .type 0xf; .const 0x1; .endef;
+.line 102;
+.def _CRANK_AW613E_teeth_till_gap_; .val 0x4; .scl 3; .etpuclass CRANK; .type 0xc; .const 0x1; .endef;
+.line 103;
+.def _CRANK_AW613E_teeth_in_gap_; .val 0x8; .scl 3; .etpuclass CRANK; .type 0x2; .const 0x1; .endef;
+.line 104;
+.def _CRANK_AW613E_misscnt_mask_; .val 0x0; .scl 3; .etpuclass CRANK; .type 0xd; .const 0x1; .alias _AW_CHAN_ALIAS_0; .endef;
+.line 105;
+.def _CRANK_AW613E_teeth_per_cycle_; .val 0xc; .scl 3; .etpuclass CRANK; .type 0xc; .const 0x1; .endef;
+.line 106;
+.def _CRANK_AW613E_teeth_per_sync_; .val 0x10; .scl 3; .etpuclass CRANK; .type 0xc; .const 0x1; .endef;
+.line 107;
+.def _CRANK_AW613E_tooth_counter_gap_; .val 0x14; .scl 3; .etpuclass CRANK; .type 0xc; .endef;
+.line 108;
+.def _CRANK_AW613E_tooth_counter_cycle_; .val 0x18; .scl 3; .etpuclass CRANK; .type 0xc; .endef;
+.line 109;
+.def _CRANK_AW613E_blank_teeth_; .val 0x1c; .scl 3; .etpuclass CRANK; .type 0xc; .endef;
+.line 110;
+.def _CRANK_AW613E_state_; .val 0x20; .scl 3; .etpuclass CRANK; .type 0xc; .endef;
+.line 111;
+.def _CRANK_AW613E_error_; .val 0x24; .scl 3; .etpuclass CRANK; .type 0xc; .endef;
+.line 112;
+.def _CRANK_AW613E_tooth_period_log_; .val 0x51; .scl 3; .etpuclass CRANK; .type 0x1e; .const 0x1; .endef;
+.line 161;
+.defentry; .etpuclass CRANK; .ettable CRANK; .endentry;
+.line 162;
+.defentry; .etpuclass CRANK; .ettable CRANK_EMUL; .endentry;
+.line 163;
+.def _CRANK_AW613E___STACKBASE_; .val 0x59; .scl 3; .etpuclass CRANK; .type 0x4; .endef;
+.file "..\..\src\etpuc_fuel.c";
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\ETpu_Hw.h";
+.line 193;
+.def chan; .val 0x28; .scl 4; .tag register_chan; .type 0x0; .endef;
+.line 194;
+.def ContextReg; .val 0x28; .scl 4; .tag register_chan; .type 0x0; .endef;
+.line 195;
+.def erta; .val 0x10; .scl 4; .tag register_erta; .type 0x0; .endef;
+.line 196;
+.def ertA; .val 0x10; .scl 4; .tag register_erta; .type 0x0; .endef;
+.line 197;
+.def ertb; .val 0x11; .scl 4; .tag register_ertb; .type 0x0; .endef;
+.line 198;
+.def ertB; .val 0x11; .scl 4; .tag register_ertb; .type 0x0; .endef;
+.line 199;
+.def tcr1; .val 0x20; .scl 4; .tag register_tcr1; .type 0x0; .endef;
+.line 200;
+.def tcr2; .val 0x21; .scl 4; .tag register_tcr2; .type 0x0; .endef;
+.line 201;
+.def tpr; .val 0x23; .scl 4; .tag register_tpr; .type 0x0; .endef;
+.line 202;
+.def trr; .val 0x22; .scl 4; .tag register_trr; .type 0x0; .endef;
+.line 203;
+.def link; .val 0x27; .scl 4; .tag register_link; .type 0x0; .endef;
+.line 204;
+.line 205;
+.line 325;
+.line 335;
+.def tpr_reg; .val 0x23; .scl 4; .tag tpr_struct; .size 2; .type 0x8; .endef;
+.line 336;
+.def tpr_str; .val 0x23; .scl 4; .tag tpr_struct; .size 2; .type 0x8; .endef;
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\ETpu_Lib.h";
+.line 73;
+.def _AtomicBegin; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 74;
+.def _AtomicEnd; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 93;
+.def _CoherentRead24_24; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 94;
+.def _CoherentRead24_8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 95;
+.def _CoherentRead24_32; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 99;
+.def _CoherentWrite24_24; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 100;
+.def _CoherentWrite24_8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 101;
+.def _CoherentWrite24_32; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 120;
+.def _OptimizationBoundaryAll; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 126;
+.def _OptimizationDisableStart; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 127;
+.def _OptimizationDisableEnd; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 141;
+.def _ExitThread; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 157;
+.def __rotate_right_1_b7_0; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 161;
+.def __rotate_right_1_b15_0; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 165;
+.def __rotate_right_1; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 169;
+.def __rotate_right_2n; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 170;
+.def __rotate_right_2n_sf8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 171;
+.def __rotate_right_2n_sf16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 172;
+.def __rotate_right_2n_sf24; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 189;
+.def __abs; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 190;
+.def __abs_sf8; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 191;
+.def __abs_sf16; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 192;
+.def __abs_sf24; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 198;
+.def __shift_right_SR; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 203;
+.def __shift_right_SR48; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 204;
+.def __shift_right_SR48_sf8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 205;
+.def __shift_right_SR48_sf16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 206;
+.def __shift_right_SR48_sf24; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 214;
+.def __shift_left_2n; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 215;
+.def __shift_left_2n_sf8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 216;
+.def __shift_left_2n_sf16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 217;
+.def __shift_left_2n_sf24; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 218;
+.def __shift_right_2n; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 219;
+.def __shift_right_2n_sf8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 220;
+.def __shift_right_2n_sf16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 221;
+.def __shift_right_2n_sf24; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 230;
+.def __bit_n_update; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 231;
+.def __bit_n_update_sf8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 232;
+.def __bit_n_update_sf16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 233;
+.def __bit_n_update_sf24; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 242;
+.def __bit_n_exchange_C; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 243;
+.def __bit_n_exchange_C_sf8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 244;
+.def __bit_n_exchange_C_sf16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 245;
+.def __bit_n_exchange_C_sf24; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 256;
+.def __mults8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 257;
+.def __mults16; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 258;
+.def __mults24; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 260;
+.def __multu8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 261;
+.def __multu16; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 262;
+.def __multu24; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 265;
+.def __macs; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 268;
+.def __macu; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 271;
+.def __fmults8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 274;
+.def __fmults16; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 277;
+.def __fmultu8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 280;
+.def __fmultu16; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 283;
+.def __divu8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 284;
+.def __divu16; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 285;
+.def __divu24; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 347;
+.def mulir; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 348;
+.def muliur; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 352;
+.def muli8r8; .val 0xffffffff; .scl 5; .type 0x22; .endef;
+.line 353;
+.def muli8ur8; .val 0xffffffff; .scl 5; .type 0x2c; .endef;
+.line 354;
+.def muli16r16; .val 0xffffffff; .scl 5; .type 0x23; .endef;
+.line 355;
+.def muli16ur16; .val 0xffffffff; .scl 5; .type 0x2d; .endef;
+.line 356;
+.def muli24r8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 357;
+.def muli24ur8; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 358;
+.def muli24r16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 359;
+.def muli24ur16; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 361;
+.def muli8r8u; .val 0xffffffff; .scl 5; .type 0x22; .endef;
+.line 362;
+.def muli16r16u; .val 0xffffffff; .scl 5; .type 0x23; .endef;
+.line 381;
+.def _Error_handler_entry; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 382;
+.def _Error_handler_unexpected_thread; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 383;
+.def _Error_handler_scm_off_weeds; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.line 384;
+.def _Error_handler_fill_weeds; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.file "..\..\src\etpuc_crank.h";
+.line 123;
+.def _CRANK_AW613E_INIT_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 124;
+.def _CRANK_AW613E_ANGLE_ADJUST_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 125;
+.def _CRANK_AW613E_CRANK_WITH_GAP_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 126;
+.def _CRANK_AW613E_CRANK_WITH_ADDITIONAL_TOOTH_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 129;
+.def _CRANK_AW613E_INIT_EMUL_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 130;
+.def _CRANK_AW613E_ANGLE_ADJUST_EMUL_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 131;
+.def _CRANK_AW613E_SET_SPEED_EMUL_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 132;
+.def _CRANK_AW613E_CRANK_WITH_GAP_EMUL_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 140;
+.def _CRANK_AW613E_ToothArray_Log_; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 141;
+.def _CRANK_AW613E_Set_TRR_; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 146;
+.def _CRANK_AW613E_Window_NoReturn_; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.line 148;
+.def _CRANK_AW613E_WindowAcrossGap_NoReturn_; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.line 150;
+.def _CRANK_AW613E_WindowCloseAt_NoReturn_; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.line 153;
+.def _CRANK_AW613E_WindowClose_NoReturn_; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.line 154;
+.def _CRANK_AW613E_Stall_NoReturn_; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.line 170;
+.def CRANK_Time_to_Angle_HighRes; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 172;
+.def CRANK_Time_to_Angle_LowRes; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 180;
+.line 180;
+.def eng_pos_state; .scl 5; .type 0xc; .endef;
+.line 181;
+.line 181;
+.def eng_cycle_tcr2_ticks; .scl 5; .type 0xe; .const 0x1; .endef;
+.line 182;
+.line 182;
+.def eng_cycle_tcr2_start; .scl 5; .type 0xe; .endef;
+.line 183;
+.line 183;
+.def eng_trr_norm; .scl 5; .type 0xe; .endef;
+.file "..\..\src\etpuc_set.h";
+.line 31;
+.def Link4; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.file "..\..\src\etpuc_fuel.c";
+
+.line 88;
+.def _FUEL_AW613E_OnRecalcAngle_NoReturn_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000029; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_OnRecalcAngle_NoReturn_; .endef;
+.def _FUEL_AW613E_OnRecalcAngle_NoReturn_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_SCOPEBLOCK_0_; .endef;
+.def tmp; .val 0x26; .scl 4; .type 0x4; .endef;
+
+.line 93;
+	// ram   diob = tdc_angle_actual;; // *((channel int24 *) 0x5;
+.opstart 0xbfefff81; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_tdc_angle_actual_,0;  .opend;
+	// alu    a = diob+0x0;;
+.opstart 0x000b0419; .opend;
+	// ram   p_23_0 = angle_stop;; // *((channel int24 *) 0xD;
+.opstart 0xbfeffb83; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_stop_,0;  .opend;
+	// alu    a = a-p, SampleFlags;;
+.opstart 0x1c190eff; .opend;
+	// alu    ertB = a+0x0;;
+.opstart 0x00093419; .opend;
+
+.line 94;
+	// chan  clear MatchRecognitionLatchB;;
+.opstart 0x7fffffbf; .opend;
+
+.line 95;
+	// chan  matchB = ertB, set MatchEnableLatchB;;
+.opstart 0x7fffffdf; .opend;
+
+.line 97;
+	// chan  set ChannelFlag1;;
+.opstart 0x0ffffffe; .opend;
+
+.line 98;
+	// ram   p_31_24 = is_await_recalc;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_is_await_recalc_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    a = a & 0xFFFFFE;;
+.opstart 0x0ff90bd2; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// ram   is_await_recalc = p_31_24;; // *((channel int8 *) 0x8;
+.opstart 0xcffff982; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_is_await_recalc_,0;  .opend;
+
+.line 102;
+	// ram   p_31_24 = generation_disable;; // *((channel int8 *) 0x0;
+.opstart 0xcfeff980; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_generation_disable_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    p_31_24 = a+0x0, SampleFlags;;
+.opstart 0x0009a019; .opend;
+	// seq  if z==false then goto OnRecalcAngle_NoReturn__AW613E_END_IFELSE_0, flush;;
+.opstart 0xf0d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_END_IFELSE_0_,0;  .opend;
+.def __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_LOGICAL_AND_OP1_TRUE_0_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// ram   p_23_0 = injection_time;; // *((channel int24 *) 0x15;
+.opstart 0xbfeffb85; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_,0;  .opend;
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+	// ram   p_23_0 = injection_time_minimum;; // *((channel int24 *) 0x1D;
+.opstart 0xbfeffb87; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_minimum_,0;  .opend;
+	// alu    nil = p-a, SampleFlags;;
+.opstart 0x1c38feff; .opend;
+	// seq  if LessThan==false then goto OnRecalcAngle_NoReturn__AW613E_END_IFELSE_0, flush;;
+.opstart 0xf4900007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_END_IFELSE_0_,0;  .opend;
+	// seq  goto OnRecalcAngle_NoReturn__AW613E_THEN_IF_ELSE_0, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_THEN_IF_ELSE_0_,0;  .opend;
+.def __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_THEN_IF_ELSE_0_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 103;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_SCOPEBLOCK_1_; .endef;
+
+.line 105;
+	// ram   p_23_0 = injection_time;; // *((channel int24 *) 0x15;
+.opstart 0xbfeffb85; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_,0;  .opend;
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+	// ram   p_23_0 = compensation_time;; // *((channel int24 *) 0x19;
+.opstart 0xbfeffb86; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_compensation_time_,0;  .opend;
+	// alu    a = a+p, SampleFlags;;
+.opstart 0x1f190eff; .opend;
+	// alu    d = a+0x0;;
+.opstart 0x00095411; .opend;
+
+.line 106;
+.region processArgument, __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E___PROC_ARG_0_REGION_0_;
+.endregion __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E___PROC_ARG_0_REGION_0_;
+
+.region placeArgumentInReg, __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E___ARG_0_IN_REG_REGION_0_;
+	// put arg/param in register 'a'
+
+	// alu    a = d+0x0;;
+.opstart 0x00040419; .opend;
+.endregion __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E___ARG_0_IN_REG_REGION_0_;
+
+	// seq  call CRANK_Time_to_Angle_HighRes, flush;;
+.opstart 0xffd00007; .oplabel BAF_13_0_,StandardTest,CRANK_Time_to_Angle_HighRes,0;  .opend;
+	// alu    d = a+0x0;;
+.opstart 0x00095411; .opend;
+
+.line 107;
+	// ram   diob = tdc_angle_actual;; // *((channel int24 *) 0x5;
+.opstart 0xbfefff81; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_tdc_angle_actual_,0;  .opend;
+	// ram   p_23_0 = angle_normal_end;; // *((channel int24 *) 0x9;
+.opstart 0xbfeffb82; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_normal_end_,0;  .opend;
+	// alu    a = diob-p, SampleFlags;;
+.opstart 0x1c1b0eff; .opend;
+	// alu    sr = d+0x0;;
+.opstart 0x00041419; .opend;
+	// alu    a = a-sr, SampleFlags;;
+.opstart 0x1c590eff; .opend;
+	// alu    diob = a+0x0;;
+.opstart 0x00094419; .opend;
+	// ram   injection_start_angle = diob;; // *((channel int24 *) 0x2D;
+.opstart 0xbfffff8b; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_start_angle_,0;  .opend;
+
+.line 108;
+	// ram   p_23_0 = injection_start_angle;; // *((channel int24 *) 0x2D;
+.opstart 0xbfeffb8b; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_start_angle_,0;  .opend;
+	// alu    ertA = p+0x0;;
+.opstart 0x00082419; .opend;
+
+.line 111;
+	// seq  if FunctionMode0==false then goto OnRecalcAngle_NoReturn__AW613E_ELSE_IFELSE_1, flush;;
+.opstart 0xf3d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_ELSE_IFELSE_1_,0;  .opend;
+.def __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_THEN_IF_ELSE_1_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 112;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_SCOPEBLOCK_2_; .endef;
+
+.line 113;
+	// chan  FutureOutputPin high on matchA;;
+.opstart 0x49ffffff; .opend;
+
+.line 114;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_SCOPEBLOCK_2_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto OnRecalcAngle_NoReturn__AW613E_END_IFELSE_1, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_END_IFELSE_1_,0;  .opend;
+.def __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_ELSE_IFELSE_1_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 116;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_SCOPEBLOCK_3_; .endef;
+
+.line 117;
+	// chan  FutureOutputPin low on matchA;;
+.opstart 0x4affffff; .opend;
+
+.line 118;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_SCOPEBLOCK_3_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_END_IFELSE_1_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 120;
+	// chan  ActionUnitA: tcr2 >= match, capture tcr1;;
+.opstart 0x4ff1ffff; .opend;
+
+.line 121;
+	// chan  matchA = ertA, set MatchEnableLatchA;;
+.opstart 0x7fffff7f; .opend;
+
+.line 122;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_SCOPEBLOCK_1_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_END_IFELSE_0_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 123;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_SCOPEBLOCK_0_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_OnRecalcAngle_NoReturn__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_OnRecalcAngle_NoReturn_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 133;
+.def _FUEL_AW613E_OnStopAngle_NoReturn_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000029; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_OnStopAngle_NoReturn_; .endef;
+.def _FUEL_AW613E_OnStopAngle_NoReturn_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_OnStopAngle_NoReturn__AW613E_SCOPEBLOCK_4_; .endef;
+
+.line 136;
+	// chan  clear MatchEnableLatches;;
+.opstart 0x7ffffffd; .opend;
+
+.line 139;
+	// ram   p_23_0 = injection_time_applied;; // *((channel int24 *) 0x25;
+.opstart 0xbfeffb89; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_applied_,0;  .opend;
+	// alu    diob = p+0x0;;
+.opstart 0x00084419; .opend;
+	// ram   injection_time_applied_cpu = diob;; // *((channel int24 *) 0x29;
+.opstart 0xbfffff8a; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_applied_cpu_,0;  .opend;
+
+.line 141;
+	// ram   injection_time_applied =  0;; // *((channel int24 *) 0x25;
+.opstart 0xbffffb09; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_applied_,0;  .opend;
+
+.line 144;
+	// ram   diob = tdc_angle_actual;; // *((channel int24 *) 0x5;
+.opstart 0xbfefff81; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_tdc_angle_actual_,0;  .opend;
+	// ram   p_23_0 = injection_start_angle;; // *((channel int24 *) 0x2D;
+.opstart 0xbfeffb8b; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_start_angle_,0;  .opend;
+	// alu    a = diob-p, SampleFlags;;
+.opstart 0x1c1b0eff; .opend;
+	// alu    diob = a+0x0;;
+.opstart 0x00094419; .opend;
+	// ram   injection_start_angle_cpu = diob;; // *((channel int24 *) 0x31;
+.opstart 0xbfffff8c; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_start_angle_cpu_,0;  .opend;
+
+.line 147;
+	// ram   diob = tdc_angle_actual;; // *((channel int24 *) 0x5;
+.opstart 0xbfefff81; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_tdc_angle_actual_,0;  .opend;
+	// alu    a = diob+0x0;;
+.opstart 0x000b0419; .opend;
+	// ram   p_23_0 = angle_stop;; // *((channel int24 *) 0xD;
+.opstart 0xbfeffb83; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_stop_,0;  .opend;
+	// alu    a = a-p, SampleFlags;;
+.opstart 0x1c190eff; .opend;
+	// alu    diob = a+0x0;;
+.opstart 0x00094419; .opend;
+	// ram   angle_stop_actual_last = diob;; // *((channel int24 *) 0x3D;
+.opstart 0xbfffff8f; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_stop_actual_last_,0;  .opend;
+
+.line 150;
+	// ram   p_23_0 = eng_cycle_tcr2_ticks;; // *((global int24 *) 0x1;
+.opstart 0x9feffb00; .oplabel AID_7_0_,AW6B2D_NAMELESS_CLASS,eng_cycle_tcr2_ticks,0;  .opend;
+	// ram   diob = tdc_angle_actual;; // *((channel int24 *) 0x5;
+.opstart 0xbfefff81; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_tdc_angle_actual_,0;  .opend;
+	// alu    a = diob+p, SampleFlags;;
+.opstart 0x1f1b0eff; .opend;
+	// alu    diob = a+0x0;;
+.opstart 0x00094419; .opend;
+	// ram   tdc_angle_actual = diob;; // *((channel int24 *) 0x5;
+.opstart 0xbfffff81; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_tdc_angle_actual_,0;  .opend;
+
+.line 153;
+	// chan  set SvcdChan ChannelIntr;;
+.opstart 0xffff3ef9; .opend;
+
+.line 156;
+	// ram   p_31_24 = is_first_recalc;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_is_first_recalc_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    a = a | 0x2;;
+.opstart 0x0c090bc2; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// ram   is_first_recalc = p_31_24;; // *((channel int8 *) 0x8;
+.opstart 0xcffff982; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_is_first_recalc_,0;  .opend;
+
+.line 157;
+	// ram   p_23_0 = angle_offset_recalc;; // *((channel int24 *) 0x11;
+.opstart 0xbfeffb84; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_offset_recalc_,0;  .opend;
+	// alu    diob = p+0x0;;
+.opstart 0x00084419; .opend;
+	// ram   angle_offset_recalc_working = diob;; // *((channel int24 *) 0x41;
+.opstart 0xbfffff90; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_offset_recalc_working_,0;  .opend;
+
+.line 158;
+	// seq  goto ScheduleRecalc_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_ScheduleRecalc_NoReturn_,0;  .opend;
+
+.line 159;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_OnStopAngle_NoReturn__AW613E_SCOPEBLOCK_4_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_OnStopAngle_NoReturn__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_OnStopAngle_NoReturn_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 165;
+.def _FUEL_AW613E_ScheduleRecalc_NoReturn_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000029; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_ScheduleRecalc_NoReturn_; .endef;
+.def _FUEL_AW613E_ScheduleRecalc_NoReturn_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E_SCOPEBLOCK_5_; .endef;
+.def tmp; .val 0x26; .scl 4; .type 0x4; .endef;
+
+.line 170;
+	// ram   p_23_0 = injection_time;; // *((channel int24 *) 0x15;
+.opstart 0xbfeffb85; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_,0;  .opend;
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+	// ram   p_23_0 = compensation_time;; // *((channel int24 *) 0x19;
+.opstart 0xbfeffb86; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_compensation_time_,0;  .opend;
+	// alu    a = a+p, SampleFlags;;
+.opstart 0x1f190eff; .opend;
+	// alu    d = a+0x0;;
+.opstart 0x00095411; .opend;
+
+.line 171;
+.region processArgument, __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E___PROC_ARG_0_REGION_2_;
+.endregion __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E___PROC_ARG_0_REGION_2_;
+
+.region placeArgumentInReg, __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E___ARG_0_IN_REG_REGION_2_;
+	// put arg/param in register 'a'
+
+	// alu    a = d+0x0;;
+.opstart 0x00040419; .opend;
+.endregion __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E___ARG_0_IN_REG_REGION_2_;
+
+	// seq  call CRANK_Time_to_Angle_LowRes, flush;;
+.opstart 0xffd00007; .oplabel BAF_13_0_,StandardTest,CRANK_Time_to_Angle_LowRes,0;  .opend;
+	// alu    d = a+0x0;;
+.opstart 0x00095411; .opend;
+
+.line 172;
+	// ram   diob = tdc_angle_actual;; // *((channel int24 *) 0x5;
+.opstart 0xbfefff81; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_tdc_angle_actual_,0;  .opend;
+	// ram   p_23_0 = angle_normal_end;; // *((channel int24 *) 0x9;
+.opstart 0xbfeffb82; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_normal_end_,0;  .opend;
+	// alu    a = diob-p, SampleFlags;;
+.opstart 0x1c1b0eff; .opend;
+	// alu    sr = d+0x0;;
+.opstart 0x00041419; .opend;
+	// alu    a = a-sr, SampleFlags;;
+.opstart 0x1c590eff; .opend;
+	// alu    diob = a+0x0;;
+.opstart 0x00094419; .opend;
+	// ram   injection_start_angle = diob;; // *((channel int24 *) 0x2D;
+.opstart 0xbfffff8b; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_start_angle_,0;  .opend;
+
+.line 174;
+.region processArgument, __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E___PROC_ARG_0_REGION_3_;
+	// ram   p_23_0 = off_time_minimum;; // *((channel int24 *) 0x21;
+.opstart 0xbfeffb88; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_off_time_minimum_,0;  .opend;
+.endregion __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E___PROC_ARG_0_REGION_3_;
+
+.region placeArgumentInReg, __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E___ARG_0_IN_REG_REGION_3_;
+	// put arg/param in register 'a'
+
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+.endregion __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E___ARG_0_IN_REG_REGION_3_;
+
+	// seq  call CRANK_Time_to_Angle_LowRes, flush;;
+.opstart 0xffd00007; .oplabel BAF_13_0_,StandardTest,CRANK_Time_to_Angle_LowRes,0;  .opend;
+	// ram   p_23_0 = angle_stop_actual_last;; // *((channel int24 *) 0x3D;
+.opstart 0xbfeffb8f; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_stop_actual_last_,0;  .opend;
+	// alu    a = a+p, SampleFlags;;
+.opstart 0x1f190eff; .opend;
+	// alu    d = a+0x0;;
+.opstart 0x00095411; .opend;
+
+.line 175;
+	// ram   p_23_0 = injection_start_angle;; // *((channel int24 *) 0x2D;
+.opstart 0xbfeffb8b; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_start_angle_,0;  .opend;
+	// alu    sr = d+0x0;;
+.opstart 0x00041419; .opend;
+	// alu    a = p-sr, SampleFlags;;
+.opstart 0x1c580eff; .opend;
+	// alu    nil = a+0x0, SampleFlags;;
+.opstart 0x0009f019; .opend;
+	// seq  if n==false then goto ScheduleRecalc_NoReturn__AW613E_ELSE_IFELSE_2, flush;;
+.opstart 0xf0500007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E_ELSE_IFELSE_2_,0;  .opend;
+.def __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E_THEN_IF_ELSE_2_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 176;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E_SCOPEBLOCK_6_; .endef;
+
+.line 178;
+	// alu    ertB = d+0x0;;
+.opstart 0x00043419; .opend;
+
+.line 179;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E_SCOPEBLOCK_6_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto ScheduleRecalc_NoReturn__AW613E_END_IFELSE_2, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E_END_IFELSE_2_,0;  .opend;
+.def __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E_ELSE_IFELSE_2_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 181;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E_SCOPEBLOCK_7_; .endef;
+
+.line 183;
+	// ram   p_23_0 = injection_start_angle;; // *((channel int24 *) 0x2D;
+.opstart 0xbfeffb8b; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_start_angle_,0;  .opend;
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+	// ram   p_23_0 = angle_offset_recalc_working;; // *((channel int24 *) 0x41;
+.opstart 0xbfeffb90; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_offset_recalc_working_,0;  .opend;
+	// alu    a = a-p, SampleFlags;;
+.opstart 0x1c190eff; .opend;
+	// alu    ertB = a+0x0;;
+.opstart 0x00093419; .opend;
+
+.line 184;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E_SCOPEBLOCK_7_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E_END_IFELSE_2_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 187;
+	// chan  clear MatchRecognitionLatchB;;
+.opstart 0x7fffffbf; .opend;
+
+.line 188;
+	// chan  matchB = ertB, set MatchEnableLatchB;;
+.opstart 0x7fffffdf; .opend;
+
+.line 190;
+	// chan  clear ChannelFlag1;;
+.opstart 0x0fffff7e; .opend;
+
+.line 191;
+	// ram   p_31_24 = is_await_recalc;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_is_await_recalc_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    a = a | 0x1;;
+.opstart 0x0c090ba2; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// ram   is_await_recalc = p_31_24;; // *((channel int8 *) 0x8;
+.opstart 0xcffff982; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_is_await_recalc_,0;  .opend;
+
+.line 192;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E_SCOPEBLOCK_5_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_ScheduleRecalc_NoReturn__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_ScheduleRecalc_NoReturn_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 199;
+.def _FUEL_AW613E_SchedulePulseEnd_NoReturn_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000029; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_SchedulePulseEnd_NoReturn_; .endef;
+.def _FUEL_AW613E_SchedulePulseEnd_NoReturn_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_SCOPEBLOCK_8_; .endef;
+.def tmp; .val 0x1e; .scl 4; .type 0x4; .endef;
+
+.line 204;
+	// alu    diob = ertA+0x0;;
+.opstart 0x000e4419; .opend;
+	// ram   pulse_start_time = diob;; // *((channel int24 *) 0x35;
+.opstart 0xbfffff8d; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_pulse_start_time_,0;  .opend;
+
+.line 207;
+	// seq  if FunctionMode0==false then goto SchedulePulseEnd_NoReturn__AW613E_ELSE_IFELSE_3, flush;;
+.opstart 0xf3d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_ELSE_IFELSE_3_,0;  .opend;
+.def __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_THEN_IF_ELSE_3_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 208;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_SCOPEBLOCK_9_; .endef;
+
+.line 209;
+	// chan  FutureOutputPin low on matchA;;
+.opstart 0x4affffff; .opend;
+
+.line 210;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_SCOPEBLOCK_9_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto SchedulePulseEnd_NoReturn__AW613E_END_IFELSE_3, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_END_IFELSE_3_,0;  .opend;
+.def __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_ELSE_IFELSE_3_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 212;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_SCOPEBLOCK_10_; .endef;
+
+.line 213;
+	// chan  FutureOutputPin high on matchA;;
+.opstart 0x49ffffff; .opend;
+
+.line 214;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_SCOPEBLOCK_10_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_END_IFELSE_3_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 216;
+	// ram   p_23_0 = injection_time;; // *((channel int24 *) 0x15;
+.opstart 0xbfeffb85; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_,0;  .opend;
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+	// ram   p_23_0 = injection_time_applied;; // *((channel int24 *) 0x25;
+.opstart 0xbfeffb89; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_applied_,0;  .opend;
+	// alu    a = a-p, SampleFlags;;
+.opstart 0x1c190eff; .opend;
+	// alu    sr = a+0x0;;
+.opstart 0x00091419; .opend;
+
+.line 217;
+	// ram   p_23_0 = injection_time_minimum;; // *((channel int24 *) 0x1D;
+.opstart 0xbfeffb87; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_minimum_,0;  .opend;
+	// alu    nil = sr-p, SampleFlags;;
+.opstart 0x1c1afeff; .opend;
+	// seq  if LessThan==false then goto SchedulePulseEnd_NoReturn__AW613E_END_IFELSE_4, flush;;
+.opstart 0xf4900007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_END_IFELSE_4_,0;  .opend;
+.def __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_THEN_IF_ELSE_4_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 218;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_SCOPEBLOCK_11_; .endef;
+
+.line 219;
+	// ram   p_23_0 = injection_time_minimum;; // *((channel int24 *) 0x1D;
+.opstart 0xbfeffb87; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_minimum_,0;  .opend;
+	// alu    sr = p+0x0;;
+.opstart 0x00081419; .opend;
+
+.line 221;
+	// ram   p_31_24 = error;; // *((channel int8 *) 0x4;
+.opstart 0xcfeff981; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_error_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    a = a | 0x2, SampleFlags;;
+.opstart 0x08090bc2; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// ram   error = p_31_24;; // *((channel int8 *) 0x4;
+.opstart 0xcffff981; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_error_,0;  .opend;
+
+.line 222;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_SCOPEBLOCK_11_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_END_IFELSE_4_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 224;
+	// ram   p_23_0 = pulse_start_time;; // *((channel int24 *) 0x35;
+.opstart 0xbfeffb8d; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_pulse_start_time_,0;  .opend;
+	// alu    a = p+sr, SampleFlags;;
+.opstart 0x1f580eff; .opend;
+	// alu    ertA = a+0x0;;
+.opstart 0x00092419; .opend;
+
+.line 225;
+	// ram   p_23_0 = compensation_time;; // *((channel int24 *) 0x19;
+.opstart 0xbfeffb86; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_compensation_time_,0;  .opend;
+	// alu    a = ertA+p, SampleFlags;;
+.opstart 0x1f1e0eff; .opend;
+	// alu    ertA = a+0x0;;
+.opstart 0x00092419; .opend;
+
+.line 226;
+	// chan  ActionUnitA: tcr1 >= match, capture tcr1;;
+.opstart 0x4ff0ffff; .opend;
+
+.line 227;
+	// chan  clear MatchRecognitionLatchA;;
+.opstart 0x7ffffeff; .opend;
+
+.line 228;
+	// chan  matchA = ertA, set MatchEnableLatchA;;
+.opstart 0x7fffff7f; .opend;
+
+.line 230;
+	// chan  set ChannelFlag0;;
+.opstart 0x0ffffefe; .opend;
+
+.line 231;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_SCOPEBLOCK_8_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_SchedulePulseEnd_NoReturn__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_SchedulePulseEnd_NoReturn_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 239;
+.def _FUEL_AW613E_ScheduleAdditionalPulse_NoReturn_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000029; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_ScheduleAdditionalPulse_NoReturn_; .endef;
+.def _FUEL_AW613E_ScheduleAdditionalPulse_NoReturn_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_SCOPEBLOCK_12_; .endef;
+
+.line 242;
+	// ram   p_23_0 = injection_time;; // *((channel int24 *) 0x15;
+.opstart 0xbfeffb85; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_,0;  .opend;
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+	// ram   p_23_0 = injection_time_applied;; // *((channel int24 *) 0x25;
+.opstart 0xbfeffb89; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_applied_,0;  .opend;
+	// alu    a = a-p, SampleFlags;;
+.opstart 0x1c190eff; .opend;
+	// ram   p_23_0 = injection_time_minimum;; // *((channel int24 *) 0x1D;
+.opstart 0xbfeffb87; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_minimum_,0;  .opend;
+	// alu    nil = p-a, SampleFlags;;
+.opstart 0x1c38feff; .opend;
+	// seq  if LessThan==false then goto ScheduleAdditionalPulse_NoReturn__AW613E_END_IFELSE_5, flush;;
+.opstart 0xf4900007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_END_IFELSE_5_,0;  .opend;
+.def __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_THEN_IF_ELSE_5_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 243;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_SCOPEBLOCK_13_; .endef;
+
+.line 245;
+	// ram   p_23_0 = pulse_end_time;; // *((channel int24 *) 0x39;
+.opstart 0xbfeffb8e; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_pulse_end_time_,0;  .opend;
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+	// ram   p_23_0 = off_time_minimum;; // *((channel int24 *) 0x21;
+.opstart 0xbfeffb88; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_off_time_minimum_,0;  .opend;
+	// alu    a = a+p, SampleFlags;;
+.opstart 0x1f190eff; .opend;
+	// alu    ertA = a+0x0;;
+.opstart 0x00092419; .opend;
+
+.line 247;
+	// seq  if FunctionMode0==false then goto ScheduleAdditionalPulse_NoReturn__AW613E_ELSE_IFELSE_6, flush;;
+.opstart 0xf3d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_ELSE_IFELSE_6_,0;  .opend;
+.def __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_THEN_IF_ELSE_6_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 248;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_SCOPEBLOCK_14_; .endef;
+
+.line 249;
+	// chan  FutureOutputPin high on matchA;;
+.opstart 0x49ffffff; .opend;
+
+.line 250;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_SCOPEBLOCK_14_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto ScheduleAdditionalPulse_NoReturn__AW613E_END_IFELSE_6, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_END_IFELSE_6_,0;  .opend;
+.def __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_ELSE_IFELSE_6_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 252;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_SCOPEBLOCK_15_; .endef;
+
+.line 253;
+	// chan  FutureOutputPin low on matchA;;
+.opstart 0x4affffff; .opend;
+
+.line 254;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_SCOPEBLOCK_15_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_END_IFELSE_6_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 256;
+	// chan  ActionUnitA: tcr1 >= match, capture tcr1;;
+.opstart 0x4ff0ffff; .opend;
+
+.line 257;
+	// chan  matchA = ertA, set MatchEnableLatchA;;
+.opstart 0x7fffff7f; .opend;
+
+.line 258;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_SCOPEBLOCK_13_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_END_IFELSE_5_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 259;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_SCOPEBLOCK_12_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_ScheduleAdditionalPulse_NoReturn__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_ScheduleAdditionalPulse_NoReturn_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 266;
+.def _FUEL_AW613E_OnPulseEnd_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x21; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_OnPulseEnd_; .endef;
+.def _FUEL_AW613E_OnPulseEnd_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_OnPulseEnd__AW613E_SCOPEBLOCK_16_; .endef;
+
+.line 269;
+	// alu    diob = ertA+0x0;;
+.opstart 0x000e4419; .opend;
+	// ram   pulse_end_time = diob;; // *((channel int24 *) 0x39;
+.opstart 0xbfffff8e; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_pulse_end_time_,0;  .opend;
+
+.line 271;
+	// ram   p_23_0 = pulse_start_time;; // *((channel int24 *) 0x35;
+.opstart 0xbfeffb8d; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_pulse_start_time_,0;  .opend;
+	// alu    a = ertA-p, SampleFlags;;
+.opstart 0x1c1e0eff; .opend;
+	// ram   p_23_0 = injection_time_applied;; // *((channel int24 *) 0x25;
+.opstart 0xbfeffb89; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_applied_,0;  .opend;
+	// alu    a = p+a, SampleFlags;;
+.opstart 0x1f380eff; .opend;
+	// alu    p = a+0x0;;
+.opstart 0x00097419; .opend;
+	// ram   injection_time_applied = p_23_0;; // *((channel int24 *) 0x25;
+.opstart 0xbffffb89; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_applied_,0;  .opend;
+
+.line 272;
+	// ram   p_23_0 = compensation_time;; // *((channel int24 *) 0x19;
+.opstart 0xbfeffb86; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_compensation_time_,0;  .opend;
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+	// ram   p_23_0 = injection_time_applied;; // *((channel int24 *) 0x25;
+.opstart 0xbfeffb89; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_applied_,0;  .opend;
+	// alu    a = p-a, SampleFlags;;
+.opstart 0x1c380eff; .opend;
+	// alu    p = a+0x0;;
+.opstart 0x00097419; .opend;
+	// ram   injection_time_applied = p_23_0;; // *((channel int24 *) 0x25;
+.opstart 0xbffffb89; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_applied_,0;  .opend;
+
+.line 274;
+	// chan  clear MatchRecognitionLatchA;;
+.opstart 0x7ffffeff; .opend;
+
+.line 276;
+	// chan  clear ChannelFlag0;;
+.opstart 0x0ffffe7e; .opend;
+
+.line 277;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_OnPulseEnd__AW613E_SCOPEBLOCK_16_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_OnPulseEnd__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq  return, flush;;
+.opstart 0xffdfcef9; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_OnPulseEnd_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 289;
+.def _FUEL_AW613E_INIT_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_INIT_; .endef;
+.def _FUEL_AW613E_INIT_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_INIT__AW613E_SCOPEBLOCK_17_; .endef;
+.def tmp; .val 0x26; .scl 4; .type 0x4; .endef;
+
+.line 295;
+	// chan  DisableMatchTransitionServicing;;
+.opstart 0xff7ffefb; .opend;
+
+.line 297;
+	// chan  clear MatchEnableLatches;;
+.opstart 0x7ffffffd; .opend;
+
+.line 299;
+	// chan  clear TransitionDetectionLatches;;
+.opstart 0x7fefffff; .opend;
+
+.line 300;
+	// chan  clear LinkServiceRequest;;
+.opstart 0x4ffff7ff; .opend;
+
+.line 301;
+	// chan  clear MatchRecognitionLatchA;;
+.opstart 0x7ffffeff; .opend;
+
+.line 302;
+	// chan  clear MatchRecognitionLatchB;;
+.opstart 0x7fffffbf; .opend;
+
+.line 306;
+	// chan  mode = either match non blocking single transition;;
+.opstart 0x4fffffe5; .opend;
+
+.line 308;
+	// chan  ActionUnitA: tcr1 >= match, capture tcr1;;
+.opstart 0x4ff0ffff; .opend;
+
+.line 309;
+	// chan  ActionUnitB: tcr2 >= match, capture tcr1;;
+.opstart 0x4fff1fff; .opend;
+
+.line 311;
+	// chan  detectA = off;;
+.opstart 0x58ffffff; .opend;
+
+.line 312;
+	// chan  detectB = off;;
+.opstart 0x5f1fffff; .opend;
+
+.line 314;
+	// seq  if FunctionMode0==false then goto INIT__AW613E_ELSE_IFELSE_7, flush;;
+.opstart 0xf3d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_INIT__AW613E_ELSE_IFELSE_7_,0;  .opend;
+.def __FUEL_AW613E_INIT__AW613E_THEN_IF_ELSE_7_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 315;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_INIT__AW613E_SCOPEBLOCK_18_; .endef;
+
+.line 316;
+	// chan  CurrentOutputPin = low;;
+.opstart 0x7ffffdfe; .opend;
+
+.line 317;
+	// chan  FutureOutputPin low on matchB;;
+.opstart 0x4f5fffff; .opend;
+
+.line 318;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_INIT__AW613E_SCOPEBLOCK_18_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto INIT__AW613E_END_IFELSE_7, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_INIT__AW613E_END_IFELSE_7_,0;  .opend;
+.def __FUEL_AW613E_INIT__AW613E_ELSE_IFELSE_7_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 320;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_INIT__AW613E_SCOPEBLOCK_19_; .endef;
+
+.line 321;
+	// chan  CurrentOutputPin = high;;
+.opstart 0x7ffffbfe; .opend;
+
+.line 322;
+	// chan  FutureOutputPin high on matchB;;
+.opstart 0x4f3fffff; .opend;
+
+.line 323;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_INIT__AW613E_SCOPEBLOCK_19_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_INIT__AW613E_END_IFELSE_7_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 325;
+	// chan  enable output buffer;;
+.opstart 0x4ff8ffff; .opend;
+
+.line 327;
+	// chan  clear ChannelFlag0;;
+.opstart 0x0ffffe7e; .opend;
+
+.line 328;
+	// chan  clear ChannelFlag1;;
+.opstart 0x0fffff7e; .opend;
+
+.line 329;
+	// ram   p_31_24 = is_await_recalc;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_is_await_recalc_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    a = a | 0x1;;
+.opstart 0x0c090ba2; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// ram   is_await_recalc = p_31_24;; // *((channel int8 *) 0x8;
+.opstart 0xcffff982; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_is_await_recalc_,0;  .opend;
+
+.line 330;
+	// ram   p_23_0 = angle_offset_recalc;; // *((channel int24 *) 0x11;
+.opstart 0xbfeffb84; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_offset_recalc_,0;  .opend;
+	// alu    diob = p+0x0;;
+.opstart 0x00084419; .opend;
+	// ram   angle_offset_recalc_working = diob;; // *((channel int24 *) 0x41;
+.opstart 0xbfffff90; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_offset_recalc_working_,0;  .opend;
+
+.line 332;
+	// ram   p_31_24 = eng_pos_state;; // *((global int8 *) 0x0;
+.opstart 0xcfeff100; .oplabel AID_7_0_,AW6B2D_NAMELESS_CLASS,eng_pos_state,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    nil = a ^ 0x3, SampleFlags;;
+.opstart 0x0809fbea; .opend;
+	// seq  if z==true then goto INIT__AW613E_END_IFELSE_8, flush;;
+.opstart 0xf0d80007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_INIT__AW613E_END_IFELSE_8_,0;  .opend;
+.def __FUEL_AW613E_INIT__AW613E_THEN_IF_ELSE_8_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 333;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_INIT__AW613E_SCOPEBLOCK_20_; .endef;
+
+.line 335;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+
+.line 336;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_INIT__AW613E_SCOPEBLOCK_20_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_INIT__AW613E_END_IFELSE_8_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 339;
+	// ram   p_23_0 = tdc_angle;; // *((channel int24 *) 0x1;
+.opstart 0xbfeffb80; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_tdc_angle_,0;  .opend;
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+	// ram   p_23_0 = eng_cycle_tcr2_start;; // *((global int24 *) 0x1;
+.opstart 0x9feffb00; .oplabel AID_7_0_,AW6B2D_NAMELESS_CLASS,eng_cycle_tcr2_start,0;  .opend;
+	// alu    a = p+a, SampleFlags;;
+.opstart 0x1f380eff; .opend;
+	// alu    p = a+0x0;;
+.opstart 0x00097419; .opend;
+	// ram   tdc_angle_actual = p_23_0;; // *((channel int24 *) 0x5;
+.opstart 0xbffffb81; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_tdc_angle_actual_,0;  .opend;
+
+.line 340;
+	// ram   diob = tdc_angle_actual;; // *((channel int24 *) 0x5;
+.opstart 0xbfefff81; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_tdc_angle_actual_,0;  .opend;
+	// alu    a = diob+0x0;;
+.opstart 0x000b0419; .opend;
+	// ram   p_23_0 = angle_stop;; // *((channel int24 *) 0xD;
+.opstart 0xbfeffb83; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_stop_,0;  .opend;
+	// alu    a = a-p, SampleFlags;;
+.opstart 0x1c190eff; .opend;
+	// alu    diob = a+0x0;;
+.opstart 0x00094419; .opend;
+	// ram   angle_stop_actual_last = diob;; // *((channel int24 *) 0x3D;
+.opstart 0xbfffff8f; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_stop_actual_last_,0;  .opend;
+
+.line 343;
+	// ram   p_23_0 = injection_time;; // *((channel int24 *) 0x15;
+.opstart 0xbfeffb85; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_,0;  .opend;
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+	// ram   p_23_0 = compensation_time;; // *((channel int24 *) 0x19;
+.opstart 0xbfeffb86; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_compensation_time_,0;  .opend;
+	// alu    a = a+p, SampleFlags;;
+.opstart 0x1f190eff; .opend;
+	// alu    d = a+0x0;;
+.opstart 0x00095411; .opend;
+
+.line 344;
+.region processArgument, __FUEL_AW613E_INIT__AW613E___PROC_ARG_0_REGION_4_;
+.endregion __FUEL_AW613E_INIT__AW613E___PROC_ARG_0_REGION_4_;
+
+.region placeArgumentInReg, __FUEL_AW613E_INIT__AW613E___ARG_0_IN_REG_REGION_4_;
+	// put arg/param in register 'a'
+
+	// alu    a = d+0x0;;
+.opstart 0x00040419; .opend;
+.endregion __FUEL_AW613E_INIT__AW613E___ARG_0_IN_REG_REGION_4_;
+
+	// seq  call CRANK_Time_to_Angle_LowRes, flush;;
+.opstart 0xffd00007; .oplabel BAF_13_0_,StandardTest,CRANK_Time_to_Angle_LowRes,0;  .opend;
+	// alu    d = a+0x0;;
+.opstart 0x00095411; .opend;
+
+.line 345;
+	// ram   diob = tdc_angle_actual;; // *((channel int24 *) 0x5;
+.opstart 0xbfefff81; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_tdc_angle_actual_,0;  .opend;
+	// ram   p_23_0 = angle_normal_end;; // *((channel int24 *) 0x9;
+.opstart 0xbfeffb82; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_normal_end_,0;  .opend;
+	// alu    a = diob-p, SampleFlags;;
+.opstart 0x1c1b0eff; .opend;
+	// alu    sr = d+0x0;;
+.opstart 0x00041419; .opend;
+	// alu    a = a-sr, SampleFlags;;
+.opstart 0x1c590eff; .opend;
+	// alu    diob = a+0x0;;
+.opstart 0x00094419; .opend;
+	// ram   injection_start_angle = diob;; // *((channel int24 *) 0x2D;
+.opstart 0xbfffff8b; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_start_angle_,0;  .opend;
+
+.line 348;
+	// ram   p_23_0 = angle_offset_recalc;; // *((channel int24 *) 0x11;
+.opstart 0xbfeffb84; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_offset_recalc_,0;  .opend;
+	// alu    a = (p+0x0) << 1, SampleFlags;;
+.opstart 0x1808078a; .opend;
+	// ram   p_23_0 = injection_start_angle;; // *((channel int24 *) 0x2D;
+.opstart 0xbfeffb8b; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_start_angle_,0;  .opend;
+	// alu    a = p-a, SampleFlags;;
+.opstart 0x1c380eff; .opend;
+	// alu    ertB = a+0x0;;
+.opstart 0x00093419; .opend;
+
+.line 349;
+	// chan  matchB = ertB, set MatchEnableLatchB;;
+.opstart 0x7fffffdf; .opend;
+
+.line 352;
+	// chan  EnableMatchTransitionServicing;;
+.opstart 0xff3ffefb; .opend;
+
+.line 353;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_INIT__AW613E_SCOPEBLOCK_17_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_INIT__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_INIT_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 360;
+.def _FUEL_AW613E_STOP_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_STOP_; .endef;
+.def _FUEL_AW613E_STOP_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_STOP__AW613E_SCOPEBLOCK_21_; .endef;
+
+.line 365;
+	// seq  if FunctionMode0==false then goto STOP__AW613E_ELSE_IFELSE_9, flush;;
+.opstart 0xf3d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_STOP__AW613E_ELSE_IFELSE_9_,0;  .opend;
+.def __FUEL_AW613E_STOP__AW613E_THEN_IF_ELSE_9_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 366;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_STOP__AW613E_SCOPEBLOCK_22_; .endef;
+
+.line 367;
+	// chan  FutureOutputPin low on matchA;;
+.opstart 0x4affffff; .opend;
+
+.line 368;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_STOP__AW613E_SCOPEBLOCK_22_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto STOP__AW613E_END_IFELSE_9, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_STOP__AW613E_END_IFELSE_9_,0;  .opend;
+.def __FUEL_AW613E_STOP__AW613E_ELSE_IFELSE_9_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 370;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_STOP__AW613E_SCOPEBLOCK_23_; .endef;
+
+.line 371;
+	// chan  FutureOutputPin high on matchA;;
+.opstart 0x49ffffff; .opend;
+
+.line 372;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_STOP__AW613E_SCOPEBLOCK_23_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_STOP__AW613E_END_IFELSE_9_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 374;
+	// alu    ertA = tcr1+0x0;;
+.opstart 0x000c2419; .opend;
+
+.line 375;
+	// chan  clear MatchRecognitionLatchA;;
+.opstart 0x7ffffeff; .opend;
+
+.line 376;
+	// chan  ActionUnitA: tcr1 >= match, capture tcr1;;
+.opstart 0x4ff0ffff; .opend;
+
+.line 377;
+	// chan  matchA = ertA, set MatchEnableLatchA;;
+.opstart 0x7fffff7f; .opend;
+
+.line 379;
+	// chan  clear ChannelFlag0;;
+.opstart 0x0ffffe7e; .opend;
+
+.line 382;
+	// chan  clear MatchRecognitionLatchA;;
+.opstart 0x7ffffeff; .opend;
+
+.line 383;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_STOP__AW613E_SCOPEBLOCK_21_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_STOP__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_STOP_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 389;
+.def _FUEL_AW613E_UPDATE_INACTIVE_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_UPDATE_INACTIVE_; .endef;
+.def _FUEL_AW613E_UPDATE_INACTIVE_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_24_; .endef;
+
+.line 393;
+	// seq  if SampledMatchRecognitionLatchA==false then goto UPDATE_INACTIVE__AW613E_ELSE_IFELSE_10, flush;;
+.opstart 0xf2900007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_UPDATE_INACTIVE__AW613E_ELSE_IFELSE_10_,0;  .opend;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_THEN_IF_ELSE_10_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 394;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_25_; .endef;
+
+.line 395;
+	// seq  goto SchedulePulseEnd_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_SchedulePulseEnd_NoReturn_,0;  .opend;
+
+.line 396;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_25_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto UPDATE_INACTIVE__AW613E_END_IFELSE_10, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_UPDATE_INACTIVE__AW613E_END_IFELSE_10_,0;  .opend;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_ELSE_IFELSE_10_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 398;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_26_; .endef;
+
+.line 399;
+	// ram   p_31_24 = eng_pos_state;; // *((global int8 *) 0x0;
+.opstart 0xcfeff100; .oplabel AID_7_0_,AW6B2D_NAMELESS_CLASS,eng_pos_state,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    nil = a ^ 0x3, SampleFlags;;
+.opstart 0x0809fbea; .opend;
+	// seq  if z==true then goto UPDATE_INACTIVE__AW613E_ELSE_IFELSE_11, flush;;
+.opstart 0xf0d80007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_UPDATE_INACTIVE__AW613E_ELSE_IFELSE_11_,0;  .opend;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_THEN_IF_ELSE_11_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 400;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_27_; .endef;
+
+.line 402;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+
+.line 403;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_27_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto UPDATE_INACTIVE__AW613E_END_IFELSE_11, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_UPDATE_INACTIVE__AW613E_END_IFELSE_11_,0;  .opend;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_ELSE_IFELSE_11_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 405;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_28_; .endef;
+
+.line 407;
+	// ram   p_23_0 = injection_time_applied;; // *((channel int24 *) 0x25;
+.opstart 0xbfeffb89; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_injection_time_applied_,0;  .opend;
+	// alu    nil = p+0x0, SampleFlags;;
+.opstart 0x0008f019; .opend;
+	// seq  if z==false then goto UPDATE_INACTIVE__AW613E_ELSE_IFELSE_12, flush;;
+.opstart 0xf0d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_UPDATE_INACTIVE__AW613E_ELSE_IFELSE_12_,0;  .opend;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_THEN_IF_ELSE_12_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 408;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_29_; .endef;
+
+.line 409;
+	// ram   p_31_24 = is_await_recalc;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_is_await_recalc_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// seq  if p.bit(24)==false then goto UPDATE_INACTIVE__AW613E_ELSE_IFELSE_13, flush;;
+.opstart 0xf5100007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_UPDATE_INACTIVE__AW613E_ELSE_IFELSE_13_,0;  .opend;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_THEN_IF_ELSE_13_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 410;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_30_; .endef;
+
+.line 412;
+	// seq  goto ScheduleRecalc_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_ScheduleRecalc_NoReturn_,0;  .opend;
+
+.line 413;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_30_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto UPDATE_INACTIVE__AW613E_END_IFELSE_13, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_UPDATE_INACTIVE__AW613E_END_IFELSE_13_,0;  .opend;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_ELSE_IFELSE_13_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 415;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_31_; .endef;
+
+.line 417;
+	// seq  goto OnRecalcAngle_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_OnRecalcAngle_NoReturn_,0;  .opend;
+
+.line 418;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_31_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_END_IFELSE_13_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 419;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_29_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto UPDATE_INACTIVE__AW613E_END_IFELSE_12, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_UPDATE_INACTIVE__AW613E_END_IFELSE_12_,0;  .opend;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_ELSE_IFELSE_12_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 421;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_32_; .endef;
+
+.line 422;
+	// seq  goto ScheduleAdditionalPulse_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_ScheduleAdditionalPulse_NoReturn_,0;  .opend;
+
+.line 423;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_32_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_END_IFELSE_12_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 424;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_28_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_END_IFELSE_11_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 425;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_26_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_END_IFELSE_10_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 426;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_UPDATE_INACTIVE__AW613E_SCOPEBLOCK_24_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_UPDATE_INACTIVE__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_UPDATE_INACTIVE_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 432;
+.def _FUEL_AW613E_UPDATE_ACTIVE_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_UPDATE_ACTIVE_; .endef;
+.def _FUEL_AW613E_UPDATE_ACTIVE_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_UPDATE_ACTIVE__AW613E_SCOPEBLOCK_33_; .endef;
+
+.line 436;
+	// seq  if SampledMatchRecognitionLatchA==false then goto UPDATE_ACTIVE__AW613E_ELSE_IFELSE_14, flush;;
+.opstart 0xf2900007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_UPDATE_ACTIVE__AW613E_ELSE_IFELSE_14_,0;  .opend;
+.def __FUEL_AW613E_UPDATE_ACTIVE__AW613E_THEN_IF_ELSE_14_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 437;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_UPDATE_ACTIVE__AW613E_SCOPEBLOCK_34_; .endef;
+
+.line 439;
+	// seq  call OnPulseEnd, flush;;
+.opstart 0xffd00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_OnPulseEnd_,0;  .opend;
+
+.line 442;
+	// seq  goto ScheduleAdditionalPulse_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_ScheduleAdditionalPulse_NoReturn_,0;  .opend;
+
+.line 443;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_UPDATE_ACTIVE__AW613E_SCOPEBLOCK_34_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto UPDATE_ACTIVE__AW613E_END_IFELSE_14, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_UPDATE_ACTIVE__AW613E_END_IFELSE_14_,0;  .opend;
+.def __FUEL_AW613E_UPDATE_ACTIVE__AW613E_ELSE_IFELSE_14_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 445;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_UPDATE_ACTIVE__AW613E_SCOPEBLOCK_35_; .endef;
+
+.line 446;
+	// ram   p_23_0 = pulse_start_time;; // *((channel int24 *) 0x35;
+.opstart 0xbfeffb8d; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_pulse_start_time_,0;  .opend;
+	// alu    ertA = p+0x0;;
+.opstart 0x00082419; .opend;
+
+.line 447;
+	// seq  goto SchedulePulseEnd_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_SchedulePulseEnd_NoReturn_,0;  .opend;
+
+.line 448;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_UPDATE_ACTIVE__AW613E_SCOPEBLOCK_35_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_UPDATE_ACTIVE__AW613E_END_IFELSE_14_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 449;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_UPDATE_ACTIVE__AW613E_SCOPEBLOCK_33_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_UPDATE_ACTIVE__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_UPDATE_ACTIVE_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 455;
+.def _FUEL_AW613E_PULSE_START_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_PULSE_START_; .endef;
+.def _FUEL_AW613E_PULSE_START_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_PULSE_START__AW613E_SCOPEBLOCK_36_; .endef;
+
+.line 457;
+	// seq  goto SchedulePulseEnd_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_SchedulePulseEnd_NoReturn_,0;  .opend;
+
+.line 458;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_PULSE_START__AW613E_SCOPEBLOCK_36_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_PULSE_START__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_PULSE_START_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 464;
+.def _FUEL_AW613E_PULSE_END_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_PULSE_END_; .endef;
+.def _FUEL_AW613E_PULSE_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_PULSE_END__AW613E_SCOPEBLOCK_37_; .endef;
+
+.line 466;
+	// seq  call OnPulseEnd, flush;;
+.opstart 0xffd00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_OnPulseEnd_,0;  .opend;
+
+.line 467;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_PULSE_END__AW613E_SCOPEBLOCK_37_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_PULSE_END__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_PULSE_END_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 473;
+.def _FUEL_AW613E_STOP_ANGLE_INACTIVE_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_STOP_ANGLE_INACTIVE_; .endef;
+.def _FUEL_AW613E_STOP_ANGLE_INACTIVE_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_STOP_ANGLE_INACTIVE__AW613E_SCOPEBLOCK_38_; .endef;
+
+.line 475;
+	// seq  goto OnStopAngle_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_OnStopAngle_NoReturn_,0;  .opend;
+
+.line 476;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_STOP_ANGLE_INACTIVE__AW613E_SCOPEBLOCK_38_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_STOP_ANGLE_INACTIVE__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_STOP_ANGLE_INACTIVE_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 482;
+.def _FUEL_AW613E_STOP_ANGLE_ACTIVE_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_STOP_ANGLE_ACTIVE_; .endef;
+.def _FUEL_AW613E_STOP_ANGLE_ACTIVE_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_STOP_ANGLE_ACTIVE__AW613E_SCOPEBLOCK_39_; .endef;
+
+.line 485;
+	// ram   p_31_24 = error;; // *((channel int8 *) 0x4;
+.opstart 0xcfeff981; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_error_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    a = a | 0x1, SampleFlags;;
+.opstart 0x08090ba2; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// ram   error = p_31_24;; // *((channel int8 *) 0x4;
+.opstart 0xcffff981; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_error_,0;  .opend;
+
+.line 488;
+	// alu    ertA = ertB+0x0;;
+.opstart 0x00032419; .opend;
+
+.line 489;
+	// seq  call OnPulseEnd, flush;;
+.opstart 0xffd00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_OnPulseEnd_,0;  .opend;
+
+.line 492;
+	// seq  goto OnStopAngle_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_OnStopAngle_NoReturn_,0;  .opend;
+
+.line 493;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_STOP_ANGLE_ACTIVE__AW613E_SCOPEBLOCK_39_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_STOP_ANGLE_ACTIVE__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_STOP_ANGLE_ACTIVE_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+
+.line 498;
+.def _FUEL_AW613E_RECALC_ANGLE_; .val 0x0; .scl 2; .etpuclass FUEL; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _FUEL_AW613E_RECALC_ANGLE_; .endef;
+.def _FUEL_AW613E_RECALC_ANGLE_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_RECALC_ANGLE__AW613E_SCOPEBLOCK_40_; .endef;
+
+.line 500;
+	// ram   p_31_24 = is_first_recalc;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_is_first_recalc_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// seq  if p.bit(25)==false then goto RECALC_ANGLE__AW613E_END_IFELSE_15, flush;;
+.opstart 0xf5500007; .oplabel BAF_13_0_,StandardTest,__FUEL_AW613E_RECALC_ANGLE__AW613E_END_IFELSE_15_,0;  .opend;
+.def __FUEL_AW613E_RECALC_ANGLE__AW613E_THEN_IF_ELSE_15_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 501;
+.def; .bb; .scl 100; .tag __FUEL_AW613E_RECALC_ANGLE__AW613E_SCOPEBLOCK_41_; .endef;
+
+.line 502;
+	// ram   p_31_24 = is_first_recalc;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_is_first_recalc_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    a = a & 0xFFFFFD;;
+.opstart 0x0ff90bb2; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// ram   is_first_recalc = p_31_24;; // *((channel int8 *) 0x8;
+.opstart 0xcffff982; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_is_first_recalc_,0;  .opend;
+
+.line 503;
+	// ram   p_23_0 = angle_offset_recalc_working;; // *((channel int24 *) 0x41;
+.opstart 0xbfeffb90; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_offset_recalc_working_,0;  .opend;
+	// alu    a = p >> 2, SampleFlags;;
+.opstart 0x18080b92; .opend;
+	// alu    p = a+0x0;;
+.opstart 0x00097419; .opend;
+	// ram   angle_offset_recalc_working = p_23_0;; // *((channel int24 *) 0x41;
+.opstart 0xbffffb90; .oplabel AID_6_0_,FUEL,_FUEL_AW613E_angle_offset_recalc_working_,0;  .opend;
+
+.line 504;
+	// seq  goto ScheduleRecalc_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_ScheduleRecalc_NoReturn_,0;  .opend;
+
+.line 505;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_RECALC_ANGLE__AW613E_SCOPEBLOCK_41_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_RECALC_ANGLE__AW613E_END_IFELSE_15_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 507;
+	// seq  goto OnRecalcAngle_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_FUEL_AW613E_OnRecalcAngle_NoReturn_,0;  .opend;
+
+.line 508;
+.def; .eb; .scl 100; .tag __FUEL_AW613E_RECALC_ANGLE__AW613E_SCOPEBLOCK_40_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __FUEL_AW613E_RECALC_ANGLE__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _FUEL_AW613E_RECALC_ANGLE_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_fuel.c";
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_UPDATE_INACTIVE_; .index 0; .etpreload dont_care; .etmatch disabled; .line 522; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_UPDATE_ACTIVE_; .index 1; .etpreload dont_care; .etmatch disabled; .line 526; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_UPDATE_INACTIVE_; .index 2; .etpreload dont_care; .etmatch disabled; .line 523; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_UPDATE_ACTIVE_; .index 3; .etpreload dont_care; .etmatch disabled; .line 527; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_STOP_; .index 4; .etpreload dont_care; .etmatch disabled; .line 519; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_INIT_; .index 5; .etpreload dont_care; .etmatch disabled; .line 514; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_INIT_; .index 6; .etpreload dont_care; .etmatch disabled; .line 515; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_INIT_; .index 7; .etpreload dont_care; .etmatch disabled; .line 516; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_START_; .index 8; .etpreload dont_care; .etmatch disabled; .line 530; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_END_; .index 9; .etpreload dont_care; .etmatch disabled; .line 540; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_START_; .index 10; .etpreload dont_care; .etmatch disabled; .line 531; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_END_; .index 11; .etpreload dont_care; .etmatch disabled; .line 541; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_START_; .index 12; .etpreload dont_care; .etmatch disabled; .line 532; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_END_; .index 13; .etpreload dont_care; .etmatch disabled; .line 542; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_START_; .index 14; .etpreload dont_care; .etmatch disabled; .line 533; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_END_; .index 15; .etpreload dont_care; .etmatch disabled; .line 543; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_RECALC_ANGLE_; .index 16; .etpreload dont_care; .etmatch disabled; .line 558; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_RECALC_ANGLE_; .index 17; .etpreload dont_care; .etmatch disabled; .line 559; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_STOP_ANGLE_INACTIVE_; .index 18; .etpreload dont_care; .etmatch disabled; .line 550; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_STOP_ANGLE_ACTIVE_; .index 19; .etpreload dont_care; .etmatch disabled; .line 554; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_RECALC_ANGLE_; .index 20; .etpreload dont_care; .etmatch disabled; .line 560; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_RECALC_ANGLE_; .index 21; .etpreload dont_care; .etmatch disabled; .line 561; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_STOP_ANGLE_INACTIVE_; .index 22; .etpreload dont_care; .etmatch disabled; .line 551; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_STOP_ANGLE_ACTIVE_; .index 23; .etpreload dont_care; .etmatch disabled; .line 555; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_START_; .index 24; .etpreload dont_care; .etmatch disabled; .line 534; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_END_; .index 25; .etpreload dont_care; .etmatch disabled; .line 544; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_START_; .index 26; .etpreload dont_care; .etmatch disabled; .line 535; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_END_; .index 27; .etpreload dont_care; .etmatch disabled; .line 545; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_START_; .index 28; .etpreload dont_care; .etmatch disabled; .line 536; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_END_; .index 29; .etpreload dont_care; .etmatch disabled; .line 546; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_START_; .index 30; .etpreload dont_care; .etmatch disabled; .line 537; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass FUEL; .ettable FUEL; .etlabel _FUEL_AW613E_PULSE_END_; .index 31; .etpreload dont_care; .etmatch disabled; .line 547; .endentry;
+

@@ -1,0 +1,54 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<user creator="ASH WARE, Inc." version="2.74.0.0">
+  <build_script_define_etpu val="MPC5674F_2" />
+  <build_file name="zzz_1Sim32_1ETpuSim.MtDtBuild" in_build_script_dir="true" />
+  <source_code_search />
+  <!--=======================================================-->
+  <!--======    START TARGET-SPECIFIC SETTINGS        =======-->
+  <target name="Host">
+    <search_path val="include" />
+    <search_path val="eTPU\utils" />
+    <search_path val="..\etpu2\cpu" />
+    <search_path val="..\API\cam" />
+    <search_path val="..\API\crank" />
+    <search_path val="..\API\fuel" />
+    <search_path val="..\API\inj" />
+    <search_path val="..\API\knock" />
+    <search_path val="..\API\spark" />
+    <search_path val="..\API\tg" />
+    <internal_build val="true" />
+    <link_file name="EngineControl.coff" />
+    <primary_script_file name="Project.Cpu32Command" />
+    <source_file name="main.c" tool="GNU_CC_CPU32" />
+    <source_file name="etpu_gct.c" tool="GNU_CC_CPU32" />
+    <source_file name="eTPU\utils\etpu_util.c" tool="GNU_CC_CPU32" />
+    <source_file name="..\API\cam\etpu_cam.c" tool="GNU_CC_CPU32" />
+    <source_file name="..\API\crank\etpu_crank.c" tool="GNU_CC_CPU32" />
+    <source_file name="..\API\fuel\etpu_fuel.c" tool="GNU_CC_CPU32" />
+    <source_file name="..\API\inj\etpu_inj.c" tool="GNU_CC_CPU32" />
+    <source_file name="..\API\knock\etpu_knock.c" tool="GNU_CC_CPU32" />
+    <source_file name="..\API\spark\etpu_spark.c" tool="GNU_CC_CPU32" />
+    <source_file name="..\API\tg\etpu_tg.c" tool="GNU_CC_CPU32" />
+  </target>
+  <!--======    END TARGET-SPECIFIC SETTINGS          =======-->
+  <!--=======================================================-->
+  <!--=======================================================-->
+  <!--======    START TARGET-SPECIFIC SETTINGS        =======-->
+  <target name="eTPU_A">
+    <search_path val="include" />
+    <search_path val="eTPU\utils" />
+    <search_path val="..\etpu2\cpu" />
+    <search_path val="..\API\cam" />
+    <search_path val="..\API\crank" />
+    <search_path val="..\API\fuel" />
+    <search_path val="..\API\inj" />
+    <search_path val="..\API\knock" />
+    <search_path val="..\API\spark" />
+    <search_path val="..\API\tg" />
+    <internal_build val="false" enabled="false" />
+    <executable_file name="..\etpu2\etpu_set.elf" />
+    <code_batch_file name="..\etpu2\Mk.bat" />
+  </target>
+  <!--======    END TARGET-SPECIFIC SETTINGS          =======-->
+  <!--=======================================================-->
+</user>

@@ -1,0 +1,296 @@
+Memory Configuration
+
+Name                Origin    Length      Attributes
+SCM                 0x0000    0x6000      x--
+SDM                 0x0000    0x0400      -rw
+
+
+.entry (SCM)
+
+                    Origin    Length (byte,word)  Name
+etpu_func_00        0x0000    0x0040,   64        CAM (..\src\etpuc_cam.c)
+etpu_func_01        0x0040    0x0040,   64        CRANK (..\src\etpuc_crank.c)
+etpu_func_02        0x0080    0x0040,   64        CRANK_EMUL (..\src\etpuc_crank_emul.c)
+etpu_func_03        0x00c0    0x0040,   64        FUEL (..\src\etpuc_fuel.c)
+etpu_func_04        0x0100    0x0040,   64        INJ (..\src\etpuc_inj.c)
+etpu_func_05        0x0140    0x0040,   64        KNOCK (..\src\etpuc_knock.c)
+etpu_func_06        0x0180    0x0040,   64        SPARK (..\src\etpuc_spark.c)
+etpu_func_07        0x01c0    0x0040,   64        TG (..\src\etpuc_tg.c)
+
+
+.text (SCM)
+
+                    Origin    Length (byte,word)  Name
+                    0x0800    0x0100,   64        obj\etpuc_cam.eao
+etpu_thread         0x0800    0x0038,   14            INIT
+etpu_thread         0x0838    0x001c,    7            RESET
+etpu_thread         0x0854    0x0038,   14            LOG_1_TRANS
+etpu_thread         0x088c    0x0074,   29            LOG_2_TRANS
+                    0x0900    0x0f04,  961        obj\etpuc_crank.eao
+c_function          0x0900    0x01d4,  117            CRANK_Time_to_Angle_HighRes
+c_function          0x0ad4    0x0020,    8            CRANK_Time_to_Angle_LowRes
+etpu_fragment       0x0af4    0x0024,    9            Window_NoReturn
+etpu_fragment       0x0b18    0x0048,   18            WindowAcrossGap_NoReturn
+etpu_fragment       0x0b60    0x0004,    1            WindowCloseAt_NoReturn
+etpu_fragment       0x0b64    0x0028,   10            WindowClose_NoReturn
+etpu_fragment       0x0b8c    0x0074,   29            Stall_NoReturn
+c_function          0x0c00    0x0020,    8            ToothArray_Log
+c_function          0x0c20    0x007c,   31            Set_TRR
+etpu_thread         0x0c9c    0x004c,   19            INIT
+etpu_thread         0x0ce8    0x0034,   13            ANGLE_ADJUST
+etpu_thread         0x0d1c    0x056c,  347            CRANK_WITH_GAP
+etpu_thread         0x1288    0x057c,  351            CRANK_WITH_ADDITIONAL_TOOTH
+                    0x1804    0x0244,  145        obj\etpuc_crank_emul.eao
+etpu_thread         0x1804    0x0034,   13            INIT_EMUL
+etpu_thread         0x1838    0x0008,    2            ANGLE_ADJUST_EMUL
+etpu_thread         0x1840    0x0044,   17            SET_SPEED_EMUL
+etpu_thread         0x1884    0x01c4,  113            CRANK_WITH_GAP_EMUL
+                    0x1a48    0x02c4,  177        obj\etpuc_fuel.eao
+etpu_fragment       0x1a48    0x0068,   26            OnRecalcAngle_NoReturn
+etpu_fragment       0x1ab0    0x0048,   18            OnStopAngle_NoReturn
+etpu_fragment       0x1af8    0x005c,   23            ScheduleRecalc_NoReturn
+etpu_fragment       0x1b54    0x0048,   18            SchedulePulseEnd_NoReturn
+etpu_fragment       0x1b9c    0x0038,   14            ScheduleAdditionalPulse_NoReturn
+c_function          0x1bd4    0x0020,    8            OnPulseEnd
+etpu_thread         0x1bf4    0x007c,   31            INIT
+etpu_thread         0x1c70    0x001c,    7            STOP
+etpu_thread         0x1c8c    0x002c,   11            UPDATE_INACTIVE
+etpu_thread         0x1cb8    0x0018,    6            UPDATE_ACTIVE
+etpu_thread         0x1cd0    0x0000,    0            PULSE_START
+etpu_thread         0x1cd0    0x0008,    2            PULSE_END
+etpu_thread         0x1cd8    0x0000,    0            STOP_ANGLE_INACTIVE
+etpu_thread         0x1cd8    0x0018,    6            STOP_ANGLE_ACTIVE
+etpu_thread         0x1cf0    0x001c,    7            RECALC_ANGLE
+                    0x1d0c    0x04cc,  307        obj\etpuc_inj.eao
+c_function          0x1d0c    0x0014,    5            ScheduleIRQAngle
+c_function          0x1d20    0x0044,   17            ScheduleStartAngle1st
+etpu_fragment       0x1d64    0x0044,   17            StopBankChannels_NoReturn
+etpu_fragment       0x1da8    0x0214,  133            Phase_NoReturn
+etpu_fragment       0x1fbc    0x0068,   26            Init_NoReturn
+etpu_thread         0x2024    0x0000,    0            INIT
+etpu_thread         0x2024    0x0040,   16            STOP
+etpu_thread         0x2064    0x0008,    2            UPDATE
+etpu_thread         0x206c    0x00d8,   54            START_ANGLE_1ST
+etpu_thread         0x2144    0x0008,    2            PHASE
+etpu_thread         0x214c    0x005c,   23            STOP_ANGLE_WHILE_ACTIVE
+etpu_thread         0x21a8    0x001c,    7            STOP_ANGLE_POST_ACTIVE
+etpu_thread         0x21c4    0x0014,    5            IRQ_ANGLE
+                    0x21d8    0x0174,   93        obj\etpuc_knock.eao
+etpu_fragment       0x21d8    0x006c,   27            ScheduleStartAngle_NoReturn
+etpu_thread         0x2244    0x0044,   17            INIT
+etpu_thread         0x2288    0x0014,    5            STOP
+etpu_thread         0x229c    0x0044,   17            WINDOW_START
+etpu_thread         0x22e0    0x0024,    9            WINDOW_END
+etpu_thread         0x2304    0x0048,   18            TRIGGER
+                    0x234c    0x0014,    5        obj\etpuc_set.eao
+c_function          0x234c    0x0014,    5            Link4
+                    0x2360    0x02b8,  174        obj\etpuc_spark.eao
+etpu_fragment       0x2360    0x0060,   24            ScheduleNextRecalcAngle_NoReturn
+etpu_fragment       0x23c0    0x0024,    9            ScheduleRecalcAngle_NoReturn
+etpu_fragment       0x23e4    0x003c,   15            ScheduleStartAngle_NoReturn
+etpu_fragment       0x2420    0x0024,    9            ScheduleMinDwellTime_NoReturn
+etpu_fragment       0x2444    0x0034,   13            ScheduleEndAngleAndMaxDwellTime_NoReturn
+etpu_fragment       0x2478    0x0028,   10            ScheduleMultiPulse_NoReturn
+c_function          0x24a0    0x0024,    9            ReadSparkParams
+etpu_thread         0x24c4    0x0038,   14            INIT
+etpu_thread         0x24fc    0x0050,   20            UPDATE
+etpu_thread         0x254c    0x003c,   15            RECALC_ANGLE
+etpu_thread         0x2588    0x0008,    2            START_ANGLE
+etpu_thread         0x2590    0x0024,    9            MIN_DWELL_TIME
+etpu_thread         0x25b4    0x0018,    6            END_ANGLE
+etpu_thread         0x25cc    0x0028,   10            MAX_DWELL_TIME
+etpu_thread         0x25f4    0x0024,    9            MULTI_PULSE
+                    0x2618    0x01b8,  110        obj\etpuc_tg.eao
+etpu_thread         0x2618    0x0060,   24            INIT
+etpu_thread         0x2678    0x011c,   71            FIRST_EDGE
+etpu_thread         0x2794    0x003c,   15            SECOND_EDGE
+                    0x27d0    0x0084,   33        C:\GIT\ASHWARE\Builds\Lib\_global_error_handler_etpu2.lib
+label               0x27d0                                _Error_handler_unexpected_thread
+label               0x27dc                                _Error_handler_entry
+label               0x27e8                                _Error_handler_scm_off_weeds
+label               0x27f4                                _Error_handler_fill_weeds
+label               0x2800                                _Error_handler_save_states
+label               0x280c                                _Error_handler_LinkNotSet
+label               0x2814                                _Error_handler_Tdl_B_NotSet
+label               0x281c                                _Error_handler_Tdl_A_NotSet
+label               0x2824                                _Error_handler_Mrl_B_NotSet
+label               0x282c                                _Error_handler_Mrl_A_NotSet
+label               0x2834                                _Error_handler_InputPinNotSet
+label               0x283c                                _Error_handler_OutputPinNotSet
+label               0x2844                                _Error_handler_Flag1NotSet
+label               0x284c                                _Error_handler_Flag0NotSet
+
+
+SCM Segment Summary
+                    Origin    Length (bytes,words)
+.entry              0x0000    0x0200,  128
+.text               0x0800    0x2054, 2069
+Total SCM Used = 0x2254 bytes
+
+
+.data (SDM)
+
+                    Origin    Size      Scope             Name
+                    0x0000    0x0000                      obj\etpuc_cam.eao
+                    0x0000    0x000a                      obj\etpuc_crank.eao
+uint8               0x0000    0x0001                          eng_pos_state
+uint24              0x0001    0x0003                          eng_cycle_tcr2_ticks
+uint24              0x0005    0x0003                          eng_cycle_tcr2_start
+uint24              0x0009    0x0003                          eng_trr_norm
+                    0x000d    0x0003                      obj\etpuc_crank_emul.eao
+uint24              0x000d    0x0003                          tooth_period
+                    0x0000    0x0000                      obj\etpuc_fuel.eao
+                    0x0010    0x0004                      obj\etpuc_inj.eao
+struct              0x0010    0x0004                          inj_global
+                    0x0000    0x0000                      obj\etpuc_knock.eao
+                    0x0000    0x0000                      obj\etpuc_set.eao
+                    0x0000    0x0000                      obj\etpuc_spark.eao
+                    0x0000    0x0000                      obj\etpuc_tg.eao
+                    0x0014    0x0004                      C:\GIT\ASHWARE\Builds\Lib\_global_error_handler_etpu2.lib
+sint32              0x0014    0x0004                          _Global_error_data
+
+
+SDM Segment Summary
+                    Origin    Size
+.data               0x0000    0x0018
+Total Global SDM Used = 0x0018 bytes (not including any located data)
+
+
+Channel Frame Address Space Segments (one per eTPU Function / Class)
+
+                    Origin    Size      Scope             Name
+                                                          obj\etpuc_cam.eao
+                    0x0000    0x0010                          CAM (.chanframe_CAM)
+uint24              0x0001    0x0003                              log_size
+uint24              0x0005    0x0003                              log_idx
+uint24              0x0009    0x0003                              log_count
+uint8               0x0000    0x0001                              error
+pointer             0x000d    0x0003                              log
+                    0x0000    0x0058                          CRANK (.chanframe_CRANK)
+uint24              0x0001    0x0003                              blank_time
+uint8               0x0000    0x0001                              tcr1_clock_source_div1
+uint24              0x0005    0x0003                              tcr2_ticks_per_tooth
+uint24              0x0009    0x0003                              tcr2_ticks_per_add_tooth
+uint24              0x000d    0x0003                              last_tooth_tcr1_time
+uint24              0x0011    0x0003                              last_tooth_period
+uint24              0x0015    0x0003                              last_tooth_period_norm
+uint24              0x0019    0x0003                              last_last_tooth_period_norm
+uint24              0x001d    0x0003                              additional_tooth_period
+sint24              0x0021    0x0003                              tcr2_adjustment
+ufract24            0x0025    0x0003                              gap_ratio
+ufract24            0x0029    0x0003                              win_ratio_normal
+ufract24            0x002d    0x0003                              win_ratio_across_gap
+ufract24            0x0031    0x0003                              win_ratio_after_gap
+ufract24            0x0035    0x0003                              win_ratio_after_timeout
+uint24              0x0039    0x0003                              first_tooth_timeout
+uint32              0x003c    0x0004                              link_cam
+uint32              0x0040    0x0004                              link_1
+uint32              0x0044    0x0004                              link_2
+uint32              0x0048    0x0004                              link_3
+uint32              0x004c    0x0004                              link_4
+uint8               0x0004    0x0001                              teeth_till_gap
+sint8               0x0008    0x0001                              teeth_in_gap
+uint16              0x0054    0x0002                              misscnt_mask
+uint8               0x000c    0x0001                              teeth_per_cycle
+uint8               0x0010    0x0001                              teeth_per_sync
+uint8               0x0014    0x0001                              tooth_counter_gap
+uint8               0x0018    0x0001                              tooth_counter_cycle
+uint8               0x001c    0x0001                              blank_teeth
+uint8               0x0020    0x0001                              state
+uint8               0x0024    0x0001                              error
+pointer             0x0051    0x0003                              tooth_period_log
+                                                          obj\etpuc_crank.eao
+                                                          obj\etpuc_crank_emul.eao
+                                                          obj\etpuc_fuel.eao
+                    0x0000    0x0048                          FUEL (.chanframe_FUEL)
+sint24              0x0001    0x0003                              tdc_angle
+sint24              0x0005    0x0003                              tdc_angle_actual
+sint24              0x0009    0x0003                              angle_normal_end
+sint24              0x000d    0x0003                              angle_stop
+sint24              0x0011    0x0003                              angle_offset_recalc
+sint24              0x0015    0x0003                              injection_time
+sint24              0x0019    0x0003                              compensation_time
+sint24              0x001d    0x0003                              injection_time_minimum
+sint24              0x0021    0x0003                              off_time_minimum
+sint24              0x0025    0x0003                              injection_time_applied
+sint24              0x0029    0x0003                              injection_time_applied_cpu
+sint24              0x002d    0x0003                              injection_start_angle
+sint24              0x0031    0x0003                              injection_start_angle_cpu
+sint24              0x0035    0x0003                              pulse_start_time
+sint24              0x0039    0x0003                              pulse_end_time
+uint8               0x0000    0x0001                              generation_disable
+uint8               0x0004    0x0001                              error
+sint24              0x003d    0x0003                              angle_stop_actual_last
+sint24              0x0041    0x0003                              angle_offset_recalc_working
+bool                0x0008    0x0001                              is_await_recalc
+bool                0x0008    0x0001                              is_first_recalc
+                                                          obj\etpuc_inj.eao
+                    0x0000    0x0028                          INJ (.chanframe_INJ)
+uint8               0x0000    0x0001                              injection_count
+pointer             0x0001    0x0003                              p_injection_first
+uint8               0x0004    0x0001                              injection_counter
+pointer             0x0005    0x0003                              p_injection
+uint8               0x0008    0x0001                              phase_counter
+pointer             0x0009    0x0003                              p_phase
+uint8               0x000c    0x0001                              bank_chan_count
+uint24              0x000d    0x0003                              bank_chans
+union               0x0010    0x0004                              bank_chans_mask
+uint8               0x0014    0x0001                              error
+sint24              0x0015    0x0003                              angle_irq
+uint8               0x0018    0x0001                              inactive_polarities
+sint24              0x0019    0x0003                              angle_stop
+sint24              0x001d    0x0003                              tdc_angle
+sint24              0x0021    0x0003                              tdc_angle_actual
+                                                          obj\etpuc_knock.eao
+                    0x0000    0x0020                          KNOCK (.chanframe_KNOCK)
+uint8               0x0000    0x0001                              window_count
+pointer             0x0001    0x0003                              p_window_first
+uint8               0x0004    0x0001                              window_counter
+pointer             0x0005    0x0003                              p_window
+sint24              0x0009    0x0003                              tdc_angle
+sint24              0x000d    0x0003                              tdc_angle_actual
+sint24              0x0011    0x0003                              tcr2_window_start
+sint24              0x0015    0x0003                              tcr2_window_end
+uint24              0x0019    0x0003                              trigger_period
+uint8               0x0008    0x0001                              irq_dma_options
+                                                          obj\etpuc_set.eao
+                                                          obj\etpuc_spark.eao
+                    0x0000    0x0038                          SPARK (.chanframe_SPARK)
+sint24              0x0001    0x0003                              tdc_angle
+sint24              0x0005    0x0003                              tdc_angle_actual
+sint24              0x0009    0x0003                              angle_offset_recalc
+uint24              0x000d    0x0003                              dwell_time_min
+uint24              0x0011    0x0003                              dwell_time_max
+uint24              0x0015    0x0003                              multi_on_time
+uint24              0x0019    0x0003                              multi_off_time
+pointer             0x001d    0x0003                              p_single_spark_first
+uint8               0x0000    0x0001                              spark_count
+pointer             0x0021    0x0003                              p_single_spark
+uint8               0x0004    0x0001                              spark_counter
+uint24              0x0025    0x0003                              pulse_start_time
+uint24              0x0029    0x0003                              dwell_time_applied
+uint24              0x002d    0x0003                              dwell_time
+sint24              0x0031    0x0003                              end_angle
+uint8               0x0008    0x0001                              multi_pulse_count
+uint8               0x000c    0x0001                              multi_pulse_counter
+uint8               0x0010    0x0001                              state
+uint8               0x0014    0x0001                              error
+uint8               0x0018    0x0001                              generation_disable
+sint24              0x0035    0x0003                              angle_offset_recalc_working
+bool                0x001c    0x0001                              is_first_recalc
+                                                          obj\etpuc_tg.eao
+                    0x0000    0x0020                          TG (.chanframe_TG)
+uint24              0x0001    0x0003                              tooth_tcr1_time
+sint24              0x0005    0x0003                              tooth_period_actual
+sint24              0x0009    0x0003                              tooth_period_target
+ufract24            0x000d    0x0003                              accel_ratio
+pointer             0x0011    0x0003                              p_cam_tooth_first
+pointer             0x0015    0x0003                              p_cam_tooth
+uint8               0x0000    0x0001                              teeth_till_gap
+sint8               0x0004    0x0001                              teeth_in_gap
+uint8               0x0008    0x0001                              teeth_per_cycle
+uint8               0x000c    0x0001                              tooth_counter_gap
+uint8               0x0010    0x0001                              tooth_counter_cycle
+uint8               0x0014    0x0001                              cam_chan
+uint8               0x0018    0x0001                              generation_disable
+                                                          C:\GIT\ASHWARE\Builds\Lib\_global_error_handler_etpu2.lib

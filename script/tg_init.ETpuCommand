@@ -1,0 +1,51 @@
+// File 'tg_init.ETpuCommand'
+
+// this file expects the tooth generator crank, cam and base address
+// to be passed in the following defines:
+// TG_CRANK_CHAN
+// TG_CAM_CHAN
+// TG_BASE_ADDR
+
+//*****************************************************************************
+// eTPU Channel TG - CRANK Configuration 
+//*****************************************************************************
+write_chan_base_addr(       TG_CRANK_CHAN, TG_BASE_ADDR );
+write_chan_func(            TG_CRANK_CHAN, FS_ETPU_TG_FUNCTION_NUMBER );
+write_chan_entry_condition( TG_CRANK_CHAN, FS_ETPU_TG_TABLE_SELECT );
+write_chan_mode(            TG_CRANK_CHAN, FS_ETPU_TG_FM0_POLARITY_LOW + FS_ETPU_TG_FM1_CRANK );
+write_chan_hsrr(            TG_CRANK_CHAN, FS_ETPU_TG_HSR_INIT );
+write_chan_cpr(             TG_CRANK_CHAN, 1 ); 
+
+//*****************************************************************************
+// eTPU Channel TG - CAM Configuration 
+//*****************************************************************************
+write_chan_base_addr(       TG_CAM_CHAN, TG_BASE_ADDR );
+write_chan_func(            TG_CAM_CHAN, FS_ETPU_TG_FUNCTION_NUMBER );
+write_chan_entry_condition( TG_CAM_CHAN, FS_ETPU_TG_TABLE_SELECT );
+write_chan_mode(            TG_CAM_CHAN, FS_ETPU_TG_FM0_POLARITY_LOW + FS_ETPU_TG_FM1_CAM );
+write_chan_hsrr(            TG_CAM_CHAN, FS_ETPU_TG_HSR_INIT );
+write_chan_cpr(             TG_CAM_CHAN, 1 );
+
+//*****************************************************************************
+// eTPU Channel TG Parameters Initialization
+//*****************************************************************************
+write_chan_data24( TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_TOOTH_TCR1_TIME,     0 );
+write_chan_data24( TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_TOOTH_PERIOD_ACTUAL, rpm2tp(100) );
+write_chan_data24( TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_TOOTH_PERIOD_TARGET, rpm2tp(5000) );
+//write_chan_data24( TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_ACCEL_RATIO,         ufract24(0.05) );
+write_val("@" STRINGIFY(TG_CRANK_CHAN) ".accel_ratio", "0.05" );
+write_chan_data24( TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_P_CAM_TOOTH_FIRST,   TG_BASE_ADDR + FS_ETPU_TG_NUM_PARMS );
+write_chan_data24( TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_P_CAM_TOOTH,         0 );
+
+write_chan_data8(  TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_TEETH_TILL_GAP,      TEETH_TILL_GAP );
+write_chan_data8(  TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_TEETH_IN_GAP,        TEETH_IN_GAP );
+write_chan_data8(  TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_TEETH_PER_CYCLE,     TEETH_PER_CYCLE );
+write_chan_data8(  TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_TOOTH_COUNTER_GAP,   0 );
+write_chan_data8(  TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_TOOTH_COUNTER_CYCLE, 0 );
+write_chan_data8(  TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_CAM_CHAN,            TG_CAM_CHAN );
+write_chan_data8(  TG_CRANK_CHAN, FS_ETPU_TG_OFFSET_GENERATION_DISABLE,  FS_ETPU_TG_GENERATION_ALLOWED );
+
+write_global_data8( TG_BASE_ADDR + FS_ETPU_TG_NUM_PARMS + 0, 6  );
+write_global_data8( TG_BASE_ADDR + FS_ETPU_TG_NUM_PARMS + 1, 12 );
+write_global_data8( TG_BASE_ADDR + FS_ETPU_TG_NUM_PARMS + 2, 18 );
+write_global_data8( TG_BASE_ADDR + FS_ETPU_TG_NUM_PARMS + 3, 48 );

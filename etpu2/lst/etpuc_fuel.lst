@@ -1,0 +1,966 @@
+ETEC Tools V3.00A                  ASH WARE Inc.                  (C) 2015-2020
+    /*******************************************************************************
+    * This file has been modified by ASH WARE Inc. as allowed per the original 
+    * license (see bottom of file), to add features and fix issues.
+    *******************************************************************************/
+    
+    /*******************************************************************************
+    *
+    *  FREESCALE SEMICONDUCTOR INC. 2008-2014
+    *  ALL RIGHTS RESERVED
+    *  COPYRIGHT (c)
+    *
+    ********************************************************************************
+    *
+    *  FILE NAME:  etpuc_fuel.c
+    *
+    *  DESCRIPTION:
+    *    This eTPU function generates fuel injection pulses.
+    *
+    *******************************************************************************/
+    
+    /*******************************************************************************
+    *  Includes
+    *******************************************************************************/
+    #include <etpu_std.h>
+    #include "etpuc_fuel.h"
+    #include "etpuc_crank.h"   /* global eng_cycle_tcr2_ticks */
+    #include "etpuc_set.h"
+    
+    /*******************************************************************************
+    *  eTPU Function Parameters:
+    *  
+    *  error - error flags
+    *  tdc_angle - TCR2 angle relative to engine-cycle start
+    *  tdc_angle_actual - absolute TDC TCR2 angle
+    *  angle_normal_end - TDC-relative TCR2 normal end angle
+    *  angle_stop - TDC-relative TCR2 latest stop angle
+    *  angle_offset_recalc - TCR2 angle offset between the start angle to 
+    *    the recalculation point  
+    *  injection_time - requested TCR1 injection time
+    *  compensation_time - TCR1 time added to injection time to compensate the valve 
+    *    opening and closing time
+    *  off_time_minimum - minimum TCR1 time between 2 injection pulses 
+    *  injection_time_minimum - minimum TCR1 time of an injection pulse
+    *  injection_time_applied - applied TCR1 injection time
+    *  injection_time_applied_cpu - copy of injection_time_applied, updated 
+    *    every STOP_ANGLE 
+    *  injection_start_angle - calculated TCR2 start angle of the injection
+    *  injection_start_angle_cpu - TDC-relative TCR2 start angle of the last 
+    *    injection, updated every STOP_ANGLE
+    *  pulse_start_time - last pulse start TCR1 time
+    *  pulse_end_time - last pulse end TCR1 time 
+    *  generation_disable - disable/enable injection pulse generation. A value
+    *    change is applied from next recalculation angle, finishing the current
+    *    engine-cycle unaffected.
+    *
+    ********************************************************************************
+    *
+    *  Channel Flag usage
+    *    Flag0 = FUEL_FLAG0_INJ_NOT_ACTIVE (0)  ... Injection is not active
+    *    Flag0 = FUEL_FLAG0_INJ_ACTIVE (1)      ... Injection is active
+    *    Flag1 = FUEL_FLAG1_RECALC_ANGLE (0)    ... RECALC_ANGLE is scheduled.
+    *    Flag1 = FUEL_FLAG1_STOP_ANGLE (1)      ... STOP_ANGLE is scheduled.
+    *
+    ********************************************************************************
+    *
+    *  Channel Function Mode (FM) bits usage
+    *    FM0 is used to select the output polarity:
+    *      - FUEL_FM0_ACTIVE_HIGH
+    *      - FUEL_FM0_ACTIVE_LOW
+    *    FM1 is not used.
+    *
+    ********************************************************************************
+    *
+    *  Channel Interrupt usage
+    *    The channel interrupt on the FUEL channel is set on each STOP_ANGLE. 
+    *
+    *******************************************************************************/
+    
+    /*******************************************************************************
+    *  eTPU Class Methods/Fragments
+    *******************************************************************************/
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: OnRecalcAngle_NoReturn
+    *  DESCRIPTION: Recalculate start angle and schedule PULSE_START.
+    *               Schedule STOP_ANGLE. 
+    *******************************************************************************/
+    _eTPU_fragment FUEL::OnRecalcAngle_NoReturn(void)
+    {
+    	int24_t tmp;
+    	
+    	/* Schedule STOP_ANGLE */
+    	ertb = tdc_angle_actual - angle_stop;
+1A48: 0xBFEFFF81   ram   diob = *((channel int24 *) 0x5);;
+1A4C: 0xBFEFFB83   ram   p_23_0 = *((channel int24 *) 0xD);;
+1A50: 0x1C1B3FFF   alu    ertB = diob-p;;
+    	channel.MRLB = MRL_CLEAR;
+1A54: 0xFFFBCEFB   chan  set ChannelFlag1, clear MatchRecognitionLatchB, matchB = ertB, set MatchEnableLatchB;;
+    	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+    	/* Channel flags */
+    	channel.FLAG1 = FUEL_FLAG1_STOP_ANGLE;
+    	is_await_recalc = FALSE;
+1A58: 0x0FF2ABD2   alu    p_31_24 = p_31_24 & 0xFFFFFE;;
+1A5C: 0xCFFFF982   ram   *((channel int8 *) 0x8) = p_31_24;;
+    
+    	/* Generate injection pulse only if injection time > minimum and generation is allowed */
+    	if((generation_disable == FUEL_GENERATION_ALLOWED) &&
+    	   (injection_time > injection_time_minimum))
+1A60: 0xCFEFF980   ram   p_31_24 = *((channel int8 *) 0x0);;
+1A64: 0x0002A019   alu    p_31_24 = p_31_24+0x0, SampleFlags;;
+1A68: 0xF0D0D567   seq  if z==false then goto addr_0x1AAC, flush;;
+1A6C: 0xBFEFFB85   ram   p_23_0 = *((channel int24 *) 0x15);;
+1A70: 0xBFE80B87   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x1D);;
+1A74: 0x1C38FEFF   alu    nil = p-a, SampleFlags;;
+1A78: 0xF490D567   seq  if LessThan==false then goto addr_0x1AAC, flush;;
+    	{
+    		/* Re-calculate start angle */
+    		tmp = injection_time + compensation_time;
+    		tmp = CRANK_Time_to_Angle_HighRes(tmp);
+1A7C: 0xFFE0480E   ram   p_23_0 = *((channel int24 *) 0x19);
+    :              seq  call addr_0x900, no_flush;;
+1A80: 0x1F190FFF   alu    a = a+p;;
+1A84: 0xBFE91F81   alu    sr = a+0x0;
+    :              ram   diob = *((channel int24 *) 0x5);;
+    		injection_start_angle = tdc_angle_actual - angle_normal_end - tmp;
+1A88: 0xBFEFFB82   ram   p_23_0 = *((channel int24 *) 0x9);;
+1A8C: 0x1C1B0FFF   alu    a = diob-p;;
+1A90: 0xBC594F8B   alu    diob = a-sr;
+    :              ram   *((channel int24 *) 0x2D) = diob;;
+    		erta = injection_start_angle;
+    		
+    		/* Output pin action control */
+    		if(cc.FM0 == FUEL_FM0_ACTIVE_HIGH)
+1A94: 0xF3F0D527   seq  if FunctionMode0==false then goto addr_0x1AA4, no_flush;;
+1A98: 0x000B2419   alu    ertA = diob+0x0;;
+    		{
+    			channel.OPACA = OPAC_MATCH_HIGH;
+    		}
+1A9C: 0xF7F0D547   seq  goto addr_0x1AA8, no_flush;;
+1AA0: 0x49FFFFFF   chan  FutureOutputPin high on matchA;;
+    		else
+    		{
+    			channel.OPACA = OPAC_MATCH_LOW;
+1AA4: 0x4AFFFFFF   chan  FutureOutputPin low on matchA;;
+    		}
+    		/* Schedule PULSE_START at start angle */
+    		channel.TBSA = TBS_M2C1GE;  /* match on angle */
+1AA8: 0x4FF1FF7F   chan  matchA = ertA, set MatchEnableLatchA, ActionUnitA: tcr2 >= match, capture tcr1;;
+    		channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    	}
+    }
+1AAC: 0x0FFFFFFF   seq   end;;
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: OnStopAngle_NoReturn
+    *  DESCRIPTION: Cancel any scheduled match (PULSE_START or PULSE_END).
+    *               Write applied injection time and start angle for CPU readings.
+    *               Update actual TDC angle.
+    *               Calculate next start angle, schedule next RECALC_ANGLE.
+    *               Set channel interrupt.
+    *******************************************************************************/
+    _eTPU_fragment FUEL::OnStopAngle_NoReturn(void)
+    {
+    	/* Disable match(A) recognition (cancel any PULSE_START or PULSE_END scheduled) */
+    	channel.MRLE = MRLE_DISABLE;
+1AB0: 0xCBEF3E89   ram   diob = *((channel int24 *) 0x25);
+    :              chan  set SvcdChan ChannelIntr, clear MatchEnableLatches;;
+    
+    	/* Write applied injection time for CPU readings */
+    	injection_time_applied_cpu = injection_time_applied;
+1AB4: 0xBFFFFF8A   ram   *((channel int24 *) 0x29) = diob;;
+    	/* Reset applied injection time */
+    	injection_time_applied = 0;
+1AB8: 0xBFFFFB09   ram   *((channel int24 *) 0x25) =  0;;
+    
+    	/* Write injection start angle for CPU reading */
+    	injection_start_angle_cpu = tdc_angle_actual - injection_start_angle;
+1ABC: 0xBFEFFF81   ram   diob = *((channel int24 *) 0x5);;
+1AC0: 0xBFEFFB8B   ram   p_23_0 = *((channel int24 *) 0x2D);;
+1AC4: 0xBC1B4F8C   alu    diob = diob-p;
+    :              ram   *((channel int24 *) 0x31) = diob;;
+    
+        /* record this stop angle */	
+    	angle_stop_actual_last = tdc_angle_actual - angle_stop;
+1AC8: 0xBFEFFF81   ram   diob = *((channel int24 *) 0x5);;
+1ACC: 0xBFEFFB83   ram   p_23_0 = *((channel int24 *) 0xD);;
+1AD0: 0xBC1B4F8F   alu    diob = diob-p;
+    :              ram   *((channel int24 *) 0x3D) = diob;;
+    
+    	/* Update actual TDC angle for this cycle */
+    	tdc_angle_actual += eng_cycle_tcr2_ticks;
+1AD4: 0x9FEFFB00   ram   p_23_0 = *((global int24 *) 0x1);;
+1AD8: 0xBFEFFF81   ram   diob = *((channel int24 *) 0x5);;
+1ADC: 0xBF1B4F81   alu    diob = diob+p;
+    :              ram   *((channel int24 *) 0x5) = diob;;
+    	
+    	/* Set channel interrupt */
+    	channel.CIRC = CIRC_INT_FROM_SERVICED;
+    
+        /* schedule the next start angle calculation */
+        is_first_recalc = TRUE;
+1AE0: 0xCFEFF982   ram   p_31_24 = *((channel int8 *) 0x8);;
+1AE4: 0x0C02ABC2   alu    p_31_24 = p_31_24 | 0x2;;
+1AE8: 0xCFFFF982   ram   *((channel int8 *) 0x8) = p_31_24;;
+        angle_offset_recalc_working = angle_offset_recalc;
+1AEC: 0xBFEFFF84   ram   diob = *((channel int24 *) 0x11);;
+        ScheduleRecalc_NoReturn();
+1AF0: 0xF7F0D7C7   seq  goto addr_0x1AF8, no_flush;;
+1AF4: 0xBFFFFF90   ram   *((channel int24 *) 0x41) = diob;;
+    }
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: ScheduleRecalc_NoReturn
+    *  DESCRIPTION: Calculate next start angle, schedule next RECALC_ANGLE.
+    *******************************************************************************/
+    _eTPU_fragment FUEL::ScheduleRecalc_NoReturn(void)
+    {
+    	int24_t tmp;
+    
+    	/* Calculate next start angle */
+    	tmp = injection_time + compensation_time;
+1AF8: 0xBFEFFB85   ram   p_23_0 = *((channel int24 *) 0x15);;
+1AFC: 0xBFE80B86   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x19);;
+    	tmp = CRANK_Time_to_Angle_LowRes(tmp);
+1B00: 0xFFF056A7   seq  call addr_0xAD4, no_flush;;
+1B04: 0x1F190FFF   alu    a = a+p;;
+1B08: 0xBFE91F81   alu    sr = a+0x0;
+    :              ram   diob = *((channel int24 *) 0x5);;
+    	injection_start_angle = tdc_angle_actual - angle_normal_end - tmp;
+1B0C: 0xBFEFFB82   ram   p_23_0 = *((channel int24 *) 0x9);;
+1B10: 0xBC0B0B88   alu    a = diob-p;
+    :              ram   p_23_0 = *((channel int24 *) 0x21);;
+1B14: 0xBC594F8B   alu    diob = a-sr;
+    :              ram   *((channel int24 *) 0x2D) = diob;;
+    	/* ensure that minimum off time will be met */
+    	tmp = CRANK_Time_to_Angle_LowRes(off_time_minimum) + angle_stop_actual_last;
+1B18: 0xFFF056A7   seq  call addr_0xAD4, no_flush;;
+1B1C: 0x00080419   alu    a = p+0x0;;
+1B20: 0xBFEFFB8F   ram   p_23_0 = *((channel int24 *) 0x3D);;
+1B24: 0x1F195FF7   alu    d = a+p;;
+    	if (tmp - injection_start_angle > 0)
+1B28: 0xBFE41B8B   alu    sr = d+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x2D);;
+1B2C: 0x1C580EFF   alu    a = p-sr, SampleFlags;;
+1B30: 0xF070DA07   seq  if n==false then goto addr_0x1B40, no_flush;;
+1B34: 0x00080419   alu    a = p+0x0;;
+    	{
+            /* need to enforce minimum off time, push recalc back */
+            ertb = tmp;
+    	}
+1B38: 0xF7F0DA47   seq  goto addr_0x1B48, no_flush;;
+1B3C: 0x00043419   alu    ertB = d+0x0;;
+    	else
+    	{
+            /* expected case, next start angle is more than minimum time after stop angle */
+            ertb = injection_start_angle - angle_offset_recalc_working;
+1B40: 0xBFEFFB90   ram   p_23_0 = *((channel int24 *) 0x41);;
+1B44: 0x1C193FFF   alu    ertB = a-p;;
+    	}
+    	
+    	/* Schedule next RECAL_ANGLE */
+    	channel.MRLB = MRL_CLEAR;
+1B48: 0xDFEAC982   ram   p_31_24 = *((channel int8 *) 0x8);
+    :              chan  clear ChannelFlag1, clear MatchRecognitionLatchB, matchB = ertB, set MatchEnableLatchB;;
+    	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+    	/* Channel flags */
+    	channel.FLAG1 = FUEL_FLAG1_RECALC_ANGLE;
+    	is_await_recalc = TRUE;
+1B4C: 0x0C02ABA2   alu    p_31_24 = p_31_24 | 0x1;;
+1B50: 0xC7FFF982   ram   *((channel int8 *) 0x8) = p_31_24;
+    :              seq   end;;
+    }
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: SchedulePulseEnd_NoReturn
+    *  DESCRIPTION: Record pulse start time.
+    *               Schedule PULSE_END, check minimum injection time.
+    *******************************************************************************/
+    _eTPU_fragment FUEL::SchedulePulseEnd_NoReturn(void)
+    {
+    	int24_t tmp;
+    	
+    	/* Record pulse start time */
+    	pulse_start_time = erta;
+    
+    	/* Output pin action control */
+    	if(cc.FM0 == FUEL_FM0_ACTIVE_HIGH)
+1B54: 0xF3F0DB27   seq  if FunctionMode0==false then goto addr_0x1B64, no_flush;;
+1B58: 0xBFFE4F8D   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0x35) = diob;;
+    	{
+    		channel.OPACA = OPAC_MATCH_LOW;
+    	}
+1B5C: 0xF7F0DB47   seq  goto addr_0x1B68, no_flush;;
+1B60: 0x4AFFFFFF   chan  FutureOutputPin low on matchA;;
+    	else
+    	{
+    		channel.OPACA = OPAC_MATCH_HIGH;
+1B64: 0x49FFFFFF   chan  FutureOutputPin high on matchA;;
+    	}
+    	/* Prevent the injection time to be shorter then the minimum injection time */
+    	tmp = injection_time - injection_time_applied;
+1B68: 0xBFEFFB85   ram   p_23_0 = *((channel int24 *) 0x15);;
+1B6C: 0xBFE80B89   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x25);;
+1B70: 0xBC091B87   alu    sr = a-p;
+    :              ram   p_23_0 = *((channel int24 *) 0x1D);;
+    	if(tmp < injection_time_minimum)
+1B74: 0x1C1AFEFF   alu    nil = sr-p, SampleFlags;;
+1B78: 0xF490DC67   seq  if LessThan==false then goto addr_0x1B8C, flush;;
+    	{
+    		tmp = injection_time_minimum;
+1B7C: 0x00081419   alu    sr = p+0x0;;
+    		/* set error flag */
+    		error |= FUEL_ERROR_MINIMUM_INJ_TIME_APPLIED;
+1B80: 0xCFEFF981   ram   p_31_24 = *((channel int8 *) 0x4);;
+1B84: 0x0C02ABC2   alu    p_31_24 = p_31_24 | 0x2;;
+1B88: 0xCFFFF981   ram   *((channel int8 *) 0x4) = p_31_24;;
+    	}
+    	/* Schedule PULSE_END */
+    	erta = pulse_start_time + tmp;
+1B8C: 0xBF4B2B86   alu    ertA = diob+sr;
+    :              ram   p_23_0 = *((channel int24 *) 0x19);;
+    	erta += compensation_time;
+1B90: 0x1F1E2FFF   alu    ertA = ertA+p;;
+    	channel.TBSA = TBS_M1C1GE;  /* match on time */
+1B94: 0x4FF0FE7F   chan  clear MatchRecognitionLatchA, matchA = ertA, set MatchEnableLatchA, ActionUnitA: tcr1 >= match, capture tcr1;;
+    	channel.MRLA = MRL_CLEAR;
+    	channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    	/* Channel flags */
+    	channel.FLAG0 = FUEL_FLAG0_INJ_ACTIVE;
+1B98: 0xF7F9FEF9   chan  set ChannelFlag0;
+    :              seq   end;;
+    }
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: ScheduleAdditionalPulse_NoReturn
+    *  DESCRIPTION: Schedule additional injection pulse with respect to
+    *               - minimum injection time and
+    *               - minimum off time 
+    *******************************************************************************/
+    _eTPU_fragment FUEL::ScheduleAdditionalPulse_NoReturn(void)
+    {
+    	/* Additional pulse needed? */
+    	if(injection_time - injection_time_applied > injection_time_minimum)
+1B9C: 0xBFEFFB85   ram   p_23_0 = *((channel int24 *) 0x15);;
+1BA0: 0xBFE80B89   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x25);;
+1BA4: 0xBC090B87   alu    a = a-p;
+    :              ram   p_23_0 = *((channel int24 *) 0x1D);;
+1BA8: 0x1C38FEFF   alu    nil = p-a, SampleFlags;;
+1BAC: 0xF490DE87   seq  if LessThan==false then goto addr_0x1BD0, flush;;
+    	{
+    		/* start the additional pulse at least minimum off time after the previous pulse */
+    		erta = pulse_end_time + off_time_minimum;
+1BB0: 0xBFEFFB8E   ram   p_23_0 = *((channel int24 *) 0x39);;
+1BB4: 0xBFE80B88   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x21);;
+    		/* Output pin action control */
+    		if(cc.FM0 == FUEL_FM0_ACTIVE_HIGH)
+1BB8: 0xF3F0DE47   seq  if FunctionMode0==false then goto addr_0x1BC8, no_flush;;
+1BBC: 0x1F192FFF   alu    ertA = a+p;;
+    		{
+    			channel.OPACA = OPAC_MATCH_HIGH;
+    		}
+1BC0: 0xF7F0DE67   seq  goto addr_0x1BCC, no_flush;;
+1BC4: 0x49FFFFFF   chan  FutureOutputPin high on matchA;;
+    		else
+    		{
+    			channel.OPACA = OPAC_MATCH_LOW;
+1BC8: 0x4AFFFFFF   chan  FutureOutputPin low on matchA;;
+    		}
+    		/* Schedule PULSE_START */
+    		channel.TBSA = TBS_M1C1GE;  /* match on time */
+1BCC: 0x4FF0FF7F   chan  matchA = ertA, set MatchEnableLatchA, ActionUnitA: tcr1 >= match, capture tcr1;;
+    		channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    	}
+    }
+1BD0: 0x0FFFFFFF   seq   end;;
+    
+    /*******************************************************************************
+    *  FUNCTION NAME: OnPulseEnd
+    *  DESCRIPTION: Record pulse end time.
+    *               Update applied injection time.
+    *******************************************************************************/
+    void FUEL::OnPulseEnd(void)
+    {
+    	/* Record pulse end time */
+    	pulse_end_time = erta;
+1BD4: 0xBFFE4F8E   alu    diob = ertA+0x0;
+    :              ram   *((channel int24 *) 0x39) = diob;;
+    	/* Add pulse width to applied injection time, remove compensation time */
+    	injection_time_applied += erta - pulse_start_time;
+1BD8: 0xDFE87A8D   ram   p_23_0 = *((channel int24 *) 0x35);
+    :              chan  clear ChannelFlag0, clear MatchRecognitionLatchA;;
+1BDC: 0xBC0E0B89   alu    a = ertA-p;
+    :              ram   p_23_0 = *((channel int24 *) 0x25);;
+1BE0: 0xBF387B89   alu    p = p+a;
+    :              ram   *((channel int24 *) 0x25) = p_23_0;;
+    	injection_time_applied -= compensation_time;
+1BE4: 0xBFEFFB86   ram   p_23_0 = *((channel int24 *) 0x19);;
+1BE8: 0xBFE80B89   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x25);;
+    	/* Clear latch */
+    	channel.MRLA = MRL_CLEAR;
+    	/* Channel flags */
+    	channel.FLAG0 = FUEL_FLAG0_INJ_NOT_ACTIVE;
+    }
+1BEC: 0xFFFFCEF9   seq  return, no_flush;;
+1BF0: 0xBC387B89   alu    p = p-a;
+    :              ram   *((channel int24 *) 0x25) = p_23_0;;
+    
+    
+    
+    /*******************************************************************************
+    *  eTPU Function
+    *******************************************************************************/
+    
+    /**************************************************************************
+    * THREAD NAME: INIT
+    * DESCRIPTION: Initialize the channel to run the FUEL function.
+    **************************************************************************/
+    _eTPU_thread FUEL::INIT(_eTPU_matches_disabled)
+    {
+    	int24_t tmp;
+    
+    	/* Stop the channel */
+    	/* Disable event handling */
+    	channel.MTD = MTD_DISABLE;
+1BF4: 0xFB77FEFB   chan  clear TransitionDetectionLatches, clear MatchEnableLatches, DisableMatchTransitionServicing;;
+    	/* Disable match detection */
+    	channel.MRLE = MRLE_DISABLE;
+    	/* Reset all latches */
+    	channel.TDL = TDL_CLEAR;
+    	channel.LSR = LSR_CLEAR;
+    	channel.MRLA = MRL_CLEAR;
+    	channel.MRLB = MRL_CLEAR;
+    
+    	/* Initialize the channel */
+    	/* Set channel mode: either match non-blocking single transition */
+    	channel.PDCM = PDCM_EM_NB_ST;
+    	/* Time base selection */
+    	channel.TBSA = TBS_M1C1GE;
+    	channel.TBSB = TBS_M2C1GE;
+    	/* Input pin action control */
+    	channel.IPACA = IPAC_NO_DETECT;
+    	channel.IPACB = IPAC_NO_DETECT;
+    	/* Output pin action control */
+    	if(cc.FM0 == FUEL_FM0_ACTIVE_HIGH)
+1BF8: 0xF3F0E047   seq  if FunctionMode0==false then goto addr_0x1C08, no_flush;;
+1BFC: 0x581016A5   chan  clear MatchRecognitionLatchA, clear MatchRecognitionLatchB, ActionUnitA: tcr1 >= match, capture tcr1, ActionUnitB: tcr2 >= match, capture tcr1,
+    :                    clear LinkServiceRequest, mode = either match non blocking single transition, detectA = off, detectB = off;;
+    	{
+    		channel.PIN = PIN_SET_LOW;
+    		channel.OPACB = OPAC_MATCH_LOW;
+    	}
+1C00: 0xF7F0E067   seq  goto addr_0x1C0C, no_flush;;
+1C04: 0x4F5FFDFE   chan  CurrentOutputPin = low, FutureOutputPin low on matchB;;
+    	else
+    	{
+    		channel.PIN = PIN_SET_HIGH;
+1C08: 0x4F3FFBFE   chan  CurrentOutputPin = high, FutureOutputPin high on matchB;;
+    		channel.OPACB = OPAC_MATCH_HIGH;
+    	}
+    	/* Enable output pin buffer */
+    	channel.TBSA = TBSA_SET_OBE;
+1C0C: 0x4FF8FFFF   chan  enable output buffer;;
+    	/* Channel flags */
+    	channel.FLAG0 = FUEL_FLAG0_INJ_NOT_ACTIVE;
+1C10: 0xCFE8F982   ram   p_31_24 = *((channel int8 *) 0x8);
+    :              chan  clear ChannelFlag0;;
+    	channel.FLAG1 = FUEL_FLAG1_RECALC_ANGLE;
+1C14: 0xCFEAFE84   ram   diob = *((channel int24 *) 0x11);
+    :              chan  clear ChannelFlag1;;
+    	is_await_recalc = TRUE;
+1C18: 0x0C02ABA2   alu    p_31_24 = p_31_24 | 0x1;;
+1C1C: 0xCFFFF982   ram   *((channel int8 *) 0x8) = p_31_24;;
+    	angle_offset_recalc_working = angle_offset_recalc;
+1C20: 0xBFF80F90   alu    a = p+0x0;
+    :              ram   *((channel int24 *) 0x41) = diob;;
+    
+        if (eng_pos_state != ENG_POS_FULL_SYNC)
+1C24: 0xCFEFF100   ram   p_31_24 = *((global int8 *) 0x0);;
+1C28: 0x0802FBEA   alu    nil = p_31_24 ^ 0x3, SampleFlags;;
+1C2C: 0xF0F8E1C7   seq  if z==true then goto addr_0x1C38, no_flush;;
+1C30: 0x9FEFFB01   ram   p_23_0 = *((global int24 *) 0x5);;
+        {
+            /* only fully start the fuel processing once sync is achieved */
+            return;
+1C34: 0x0FFFFFFF   seq   end;;
+        }
+    	
+    	/* Initialize actual TDC angle */
+    	tdc_angle_actual = eng_cycle_tcr2_start + tdc_angle;
+1C38: 0xBF387B81   alu    p = p+a;
+    :              ram   *((channel int24 *) 0x5) = p_23_0;;
+    	angle_stop_actual_last = tdc_angle_actual - angle_stop;
+1C3C: 0xBFE80B83   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0xD);;
+1C40: 0xBC194F8F   alu    diob = a-p;
+    :              ram   *((channel int24 *) 0x3D) = diob;;
+    	
+    	/* Calculate the first start angle */
+    	tmp = injection_time + compensation_time;
+1C44: 0xBFEFFB85   ram   p_23_0 = *((channel int24 *) 0x15);;
+1C48: 0xBFE80B86   alu    a = p+0x0;
+    :              ram   p_23_0 = *((channel int24 *) 0x19);;
+    	tmp = CRANK_Time_to_Angle_LowRes(tmp);
+1C4C: 0xFFF056A7   seq  call addr_0xAD4, no_flush;;
+1C50: 0x1F190FFF   alu    a = a+p;;
+1C54: 0xBFE91F81   alu    sr = a+0x0;
+    :              ram   diob = *((channel int24 *) 0x5);;
+    	injection_start_angle = tdc_angle_actual - angle_normal_end - tmp;
+1C58: 0xBFEFFB82   ram   p_23_0 = *((channel int24 *) 0x9);;
+1C5C: 0xBC0B0B84   alu    a = diob-p;
+    :              ram   p_23_0 = *((channel int24 *) 0x11);;
+1C60: 0xBC594F8B   alu    diob = a-sr;
+    :              ram   *((channel int24 *) 0x2D) = diob;;
+    	
+    	/* Schedule the first RECAL_ANGLE - double angle_offset_recalc */
+    	ertb = injection_start_angle - 2*angle_offset_recalc;
+1C64: 0x1C08078A   alu    a = (p+0x0) << 1;;
+1C68: 0x1C3B3FFF   alu    ertB = diob-a;;
+    	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+    
+    	/* Enable event handling */
+    	channel.MTD = MTD_ENABLE;
+1C6C: 0xF73FEEFB   chan  matchB = ertB, set MatchEnableLatchB, EnableMatchTransitionServicing;
+    :              seq   end;;
+    }
+    
+    /**************************************************************************
+    * THREAD NAME: STOP
+    * DESCRIPTION: Stop the running injection.
+    *              The next injection will start normally. 
+    **************************************************************************/
+    _eTPU_thread FUEL::STOP(_eTPU_matches_disabled)
+    {
+    	/* Stop - schedule an immediate match A to set pin inactive 
+    	   and rewrite any match already scheduled */
+    	/* Output pin action control */
+    	if(cc.FM0 == FUEL_FM0_ACTIVE_HIGH)
+1C70: 0xF3D0E3E7   seq  if FunctionMode0==false then goto addr_0x1C7C, flush;;
+    	{
+    		channel.OPACA = OPAC_MATCH_LOW;
+    	}
+1C74: 0xF7F0E407   seq  goto addr_0x1C80, no_flush;;
+1C78: 0x4AFFFFFF   chan  FutureOutputPin low on matchA;;
+    	else
+    	{
+    		channel.OPACA = OPAC_MATCH_HIGH;
+1C7C: 0x49FFFFFF   chan  FutureOutputPin high on matchA;;
+    	}
+    	/* Schedule match now */
+    	erta = tcr1;
+1C80: 0x000C2419   alu    ertA = tcr1+0x0;;
+    	channel.MRLA = MRL_CLEAR;
+1C84: 0x4FF0FE7F   chan  clear MatchRecognitionLatchA, matchA = ertA, set MatchEnableLatchA, ActionUnitA: tcr1 >= match, capture tcr1;;
+    	channel.TBSA = TBS_M1C1GE;  /* match on time */
+    	channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    	/* Channel flag */
+    	channel.FLAG0 = FUEL_FLAG0_INJ_NOT_ACTIVE;
+    
+    	/* Clear the immediate match */
+    	channel.MRLA = MRL_CLEAR;
+1C88: 0xF7F87EFB   chan  clear ChannelFlag0, clear MatchRecognitionLatchA;
+    :              seq   end;;
+    }
+    
+    /**************************************************************************
+    * THREAD NAME: UPDATE_0
+    * DESCRIPTION: Update the injection time when the injection is NOT active.
+    **************************************************************************/
+    _eTPU_thread FUEL::UPDATE_INACTIVE(_eTPU_matches_disabled)
+    {
+    	/* Theoretically, the HSR_UPDATE can be serviced between PULSE_START edge 
+    	   and PULSE_START service - check match A latch. */
+    	if(cc.MRLA)
+1C8C: 0xF298DAA7   seq  if SampledMatchRecognitionLatchA==true then goto addr_0x1B54, flush;;
+    	{
+    		SchedulePulseEnd_NoReturn();
+    	}
+    	else
+    	{
+    	    if (eng_pos_state != ENG_POS_FULL_SYNC)
+1C90: 0xCFEFF100   ram   p_31_24 = *((global int8 *) 0x0);;
+1C94: 0x0802FBEA   alu    nil = p_31_24 ^ 0x3, SampleFlags;;
+1C98: 0xF0F8E527   seq  if z==true then goto addr_0x1CA4, no_flush;;
+1C9C: 0xBFEFFB89   ram   p_23_0 = *((channel int24 *) 0x25);;
+    	    {
+    	        /* ignore updates until full sync achieved */
+    	        return;
+1CA0: 0x0FFFFFFF   seq   end;;
+    	    }
+    	    else
+    	    {
+    			/* Does the HSR_UPDATE come before the main injection */
+    			if(injection_time_applied == 0)
+1CA4: 0x0008F019   alu    nil = p+0x0, SampleFlags;;
+1CA8: 0xF0D0DCE7   seq  if z==false then goto addr_0x1B9C, flush;;
+    			{
+    			    if (is_await_recalc)
+1CAC: 0xCFEFF982   ram   p_31_24 = *((channel int8 *) 0x8);;
+1CB0: 0xF510D247   seq  if p.bit(24)==false then goto addr_0x1A48, flush;;
+    			    {
+    			        /* pulse start not scheduled yet, reschedule the recalc match */
+    			        ScheduleRecalc_NoReturn();
+1CB4: 0xF7D0D7C7   seq  goto addr_0x1AF8, flush;;
+    			    }
+    			    else
+    			    {
+    			        /* pulse start has been scheduled, recalculate */
+        				OnRecalcAngle_NoReturn();
+        			}
+    			}
+    			else
+    			{
+    				ScheduleAdditionalPulse_NoReturn();
+    			}
+    		}
+    	}
+    }
+    
+    /**************************************************************************
+    * THREAD NAME: UPDATE_1
+    * DESCRIPTION: Update the injection time when the injection is active.
+    **************************************************************************/
+    _eTPU_thread FUEL::UPDATE_ACTIVE(_eTPU_matches_disabled)
+    {
+    	/* Theoretically, the HSR_UPDATE can be serviced between PULSE_END edge 
+    	   and PULSE_END service - check match A latch. */
+    	if(cc.MRLA)
+1CB8: 0xF290E627   seq  if SampledMatchRecognitionLatchA==false then goto addr_0x1CC4, flush;;
+    	{
+    		/* service PULSE_END first */
+    		OnPulseEnd();
+1CBC: 0xFFD0DEA7   seq  call addr_0x1BD4, flush;;
+    		
+    		/* run UPDATE_0 */
+    		ScheduleAdditionalPulse_NoReturn();
+1CC0: 0xF7D0DCE7   seq  goto addr_0x1B9C, flush;;
+    	}
+    	else
+    	{
+    		erta = pulse_start_time;
+1CC4: 0xBFEFFB8D   ram   p_23_0 = *((channel int24 *) 0x35);;
+    		SchedulePulseEnd_NoReturn();
+1CC8: 0xF7F0DAA7   seq  goto addr_0x1B54, no_flush;;
+1CCC: 0x00082419   alu    ertA = p+0x0;;
+    	}
+    }
+    
+    /**************************************************************************
+    * THREAD NAME: PULSE_START
+    * DESCRIPTION: Start of main or additional injection pulse.
+    **************************************************************************/
+    _eTPU_thread FUEL::PULSE_START(_eTPU_matches_disabled)
+    {
+    	SchedulePulseEnd_NoReturn();
+    }
+    
+    /**************************************************************************
+    * THREAD NAME: PULSE_END
+    * DESCRIPTION: End of main or additional injection pulse.
+    **************************************************************************/
+    _eTPU_thread FUEL::PULSE_END(_eTPU_matches_disabled)
+    {
+    	OnPulseEnd();
+1CD0: 0xFFD0DEA7   seq  call addr_0x1BD4, flush;;
+    }
+1CD4: 0x0FFFFFFF   seq   end;;
+    
+    /**************************************************************************
+    * THREAD NAME: STOP_ANGLE_0
+    * DESCRIPTION: Stop angle when the injection is NOT active.
+    **************************************************************************/
+    _eTPU_thread FUEL::STOP_ANGLE_INACTIVE(_eTPU_matches_disabled)
+    {
+    	OnStopAngle_NoReturn();
+    }
+    
+    /**************************************************************************
+    * THREAD NAME: STOP_ANGLE_1
+    * DESCRIPTION: Stop angle when the injection is active.
+    **************************************************************************/
+    _eTPU_thread FUEL::STOP_ANGLE_ACTIVE(_eTPU_matches_disabled)
+    {
+    	/* set error flag */
+    	error |= FUEL_ERROR_STOP_ANGLE_APPLIED;
+1CD8: 0xCFEFF981   ram   p_31_24 = *((channel int8 *) 0x4);;
+1CDC: 0x0C02ABA2   alu    p_31_24 = p_31_24 | 0x1;;
+1CE0: 0xCFFFF981   ram   *((channel int8 *) 0x4) = p_31_24;;
+    
+    	/* service PULSE_END first */
+    	erta = ertb; /* put pulse end time into erta where it is expected */
+    	OnPulseEnd();
+1CE4: 0xFFF0DEA7   seq  call addr_0x1BD4, no_flush;;
+1CE8: 0x00032419   alu    ertA = ertB+0x0;;
+    	
+    	/* Process normal STOP_ANGLE */
+    	OnStopAngle_NoReturn();
+1CEC: 0xF7D0D587   seq  goto addr_0x1AB0, flush;;
+    }
+    /**************************************************************************
+    * THREAD NAME: RECALC_ANGLE
+    * DESCRIPTION: Recalculation angle.
+    **************************************************************************/
+    _eTPU_thread FUEL::RECALC_ANGLE(_eTPU_matches_disabled)
+    {
+        if (is_first_recalc)
+1CF0: 0xF550D247   seq  if p.bit(25)==false then goto addr_0x1A48, flush;;
+        {
+            is_first_recalc = FALSE;
+1CF4: 0x0FF2ABB2   alu    p_31_24 = p_31_24 & 0xFFFFFD;;
+1CF8: 0xCFFFF982   ram   *((channel int8 *) 0x8) = p_31_24;;
+            angle_offset_recalc_working >>= 2;
+1CFC: 0xBFEFFB90   ram   p_23_0 = *((channel int24 *) 0x41);;
+1D00: 0x1C087B92   alu    p = p >> 2;;
+            ScheduleRecalc_NoReturn();
+1D04: 0xF7F0D7C7   seq  goto addr_0x1AF8, no_flush;;
+1D08: 0xBFFFFB90   ram   *((channel int24 *) 0x41) = p_23_0;;
+        }
+        
+    	OnRecalcAngle_NoReturn();
+    }
+    
+    
+    DEFINE_ENTRY_TABLE(FUEL, FUEL, alternate, outputpin, autocfsr)
+    {
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR2(6,7,   x,  x, x, x,  x, x, INIT),
+00CA: 0x06FD       Alt Entry 5, Addr 0x1BF4, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==6,7    Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==X  ChanFlag1==X  ChanFlag0==X
+    	ETPU_VECTOR1(0,     1,  0, 0, 0,  x, x, INIT),
+00CC: 0x06FD       Alt Entry 6, Addr 0x1BF4, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==0  matchB/TranA==0  InputPin==0  ChanFlag1==X  ChanFlag0==X
+    	ETPU_VECTOR1(0,     1,  0, 0, 1,  x, x, INIT),
+00CE: 0x06FD       Alt Entry 7, Addr 0x1BF4, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==0  matchB/TranA==0  InputPin==1  ChanFlag1==X  ChanFlag0==X
+    
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR3(1,4,5, x,  x, x, x,  x, x, STOP),
+00C8: 0x071C       Alt Entry 4, Addr 0x1C70, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==1,4,5  Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==X  ChanFlag1==X  ChanFlag0==X
+    
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR2(2,3,   x,  x, x, 0,  0, x, UPDATE_INACTIVE),
+00C0: 0x8723       Alt Entry 0, Addr 0x1C8C, DisableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==2,3    Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==0  ChanFlag1==X  ChanFlag0==0
+    	ETPU_VECTOR2(2,3,   x,  x, x, 1,  0, x, UPDATE_INACTIVE),
+00C4: 0x8723       Alt Entry 2, Addr 0x1C8C, DisableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==2,3    Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==1  ChanFlag1==X  ChanFlag0==0
+    
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR2(2,3,   x,  x, x, 0,  1, x, UPDATE_ACTIVE),
+00C2: 0x072E       Alt Entry 1, Addr 0x1CB8, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==2,3    Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==0  ChanFlag1==X  ChanFlag0==1
+    	ETPU_VECTOR2(2,3,   x,  x, x, 1,  1, x, UPDATE_ACTIVE),
+00C6: 0x072E       Alt Entry 3, Addr 0x1CB8, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==2,3    Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==1  ChanFlag1==X  ChanFlag0==1
+    
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR1(0,     x,  1, 0, 0,  0, 0, PULSE_START),
+00D0: 0x06D5       Alt Entry 8, Addr 0x1B54, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==0  ChanFlag1==0  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 0, 0,  0, 1, PULSE_START),
+00D4: 0x06D5       Alt Entry 10, Addr 0x1B54, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==0  ChanFlag1==1  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 0, 1,  0, 0, PULSE_START),
+00D8: 0x06D5       Alt Entry 12, Addr 0x1B54, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==1  ChanFlag1==0  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 0, 1,  0, 1, PULSE_START),
+00DC: 0x06D5       Alt Entry 14, Addr 0x1B54, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==1  ChanFlag1==1  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 1, 0,  0, 0, PULSE_START),
+00F0: 0x06D5       Alt Entry 24, Addr 0x1B54, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==0  ChanFlag1==0  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 1, 0,  0, 1, PULSE_START),
+00F4: 0x06D5       Alt Entry 26, Addr 0x1B54, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==0  ChanFlag1==1  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 1, 1,  0, 0, PULSE_START),
+00F8: 0x06D5       Alt Entry 28, Addr 0x1B54, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==1  ChanFlag1==0  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  1, 1, 1,  0, 1, PULSE_START),
+00FC: 0x06D5       Alt Entry 30, Addr 0x1B54, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==1  ChanFlag1==1  ChanFlag0==0
+    
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR1(0,     x,  1, 0, 0,  1, 0, PULSE_END),
+00D2: 0x0734       Alt Entry 9, Addr 0x1CD0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==0  ChanFlag1==0  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 0, 0,  1, 1, PULSE_END),
+00D6: 0x0734       Alt Entry 11, Addr 0x1CD0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==0  ChanFlag1==1  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 0, 1,  1, 0, PULSE_END),
+00DA: 0x0734       Alt Entry 13, Addr 0x1CD0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==1  ChanFlag1==0  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 0, 1,  1, 1, PULSE_END),
+00DE: 0x0734       Alt Entry 15, Addr 0x1CD0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==0  InputPin==1  ChanFlag1==1  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 1, 0,  1, 0, PULSE_END),
+00F2: 0x0734       Alt Entry 25, Addr 0x1CD0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==0  ChanFlag1==0  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 1, 0,  1, 1, PULSE_END),
+00F6: 0x0734       Alt Entry 27, Addr 0x1CD0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==0  ChanFlag1==1  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 1, 1,  1, 0, PULSE_END),
+00FA: 0x0734       Alt Entry 29, Addr 0x1CD0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==1  ChanFlag1==0  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  1, 1, 1,  1, 1, PULSE_END),
+00FE: 0x0734       Alt Entry 31, Addr 0x1CD0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==1  matchB/TranA==1  InputPin==1  ChanFlag1==1  ChanFlag0==1
+    
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR1(0,     x,  0, 1, 0,  0, 1, STOP_ANGLE_INACTIVE),
+00E4: 0x06AC       Alt Entry 18, Addr 0x1AB0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==0  ChanFlag1==1  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  0, 1, 1,  0, 1, STOP_ANGLE_INACTIVE),
+00EC: 0x06AC       Alt Entry 22, Addr 0x1AB0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==1  ChanFlag1==1  ChanFlag0==0
+    
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR1(0,     x,  0, 1, 0,  1, 1, STOP_ANGLE_ACTIVE),
+00E6: 0x8736       Alt Entry 19, Addr 0x1CD8, DisableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==0  ChanFlag1==1  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  0, 1, 1,  1, 1, STOP_ANGLE_ACTIVE),
+00EE: 0x8736       Alt Entry 23, Addr 0x1CD8, DisableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==1  ChanFlag1==1  ChanFlag0==1
+    
+    	//           HSR    LSR M1 M2 PIN F0 F1 vector
+    	ETPU_VECTOR1(0,     x,  0, 1, 0,  0, 0, RECALC_ANGLE),
+00E0: 0x873C       Alt Entry 16, Addr 0x1CF0, DisableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==0  ChanFlag1==0  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  0, 1, 0,  1, 0, RECALC_ANGLE),
+00E2: 0x873C       Alt Entry 17, Addr 0x1CF0, DisableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==0  ChanFlag1==0  ChanFlag0==1
+    	ETPU_VECTOR1(0,     x,  0, 1, 1,  0, 0, RECALC_ANGLE),
+00E8: 0x873C       Alt Entry 20, Addr 0x1CF0, DisableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==1  ChanFlag1==0  ChanFlag0==0
+    	ETPU_VECTOR1(0,     x,  0, 1, 1,  1, 0, RECALC_ANGLE),
+00EA: 0x873C       Alt Entry 21, Addr 0x1CF0, DisableMatches, p_31_0=*( (channel U32 *)  0x8), diob=*( (channel U24 *)  0xD)
+    :              HSR==0b000  Link==X  matchA/TranB==0  matchB/TranA==1  InputPin==1  ChanFlag1==0  ChanFlag0==1
+    
+        // unused/invalid entries
+    };
+    
+    
+    /*******************************************************************************
+    *  Export interface information to Host CPU program.
+    *******************************************************************************/
+    /* [MISRA 2004 Rule 3.4] usage of #pragma write documented in the Pragma Write 
+       Manual, see https://www.ashware.com/Manuals */
+    #pragma write h, (::ETPUfilename (cpu/etpu_fuel_auto.h));
+    #pragma write h, (/**************************************************************** );
+    #pragma write h, (* WARNING: This file is automatically generated. DO NOT EDIT IT! );
+    #pragma write h, (*);
+    #pragma write h, (* FILE NAME: etpu_fuel.h  );
+    #if defined(__TARGET_ETPU1__)
+    #pragma write h, (* ARCHITECTURE: eTPU );
+    #else
+    #pragma write h, (* ARCHITECTURE: eTPU2 );
+    #endif
+    #pragma write h, (*);
+    #pragma write h, (* This file was generated by: __FILE__ on __DATE__, __TIME__ );
+    #pragma write h, (*);
+    #pragma write h, (* This file provides an interface between eTPU code and CPU       );
+    #pragma write h, (* code. All references to the eTPU function should be made with   );
+    #pragma write h, (* information in this file. This allows only symbolic             );
+    #pragma write h, (* information to be referenced which allows the eTPU code to be   );
+    #pragma write h, (* optimized without effecting the CPU code.                       );
+    #pragma write h, (*****************************************************************/);
+    #pragma write h, (#ifndef _ETPU_FUEL_AUTO_H_ );
+    #pragma write h, (#define _ETPU_FUEL_AUTO_H_ );
+    #pragma write h, ( );
+    #pragma write h, (/* Function Configuration Information */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_FUNCTION_NUMBER) ::ETPUfunctionnumber(FUEL) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_TABLE_SELECT) ::ETPUentrytype(FUEL) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_NUM_PARMS) ::ETPUram(FUEL) );
+    #pragma write h, ( );
+    #pragma write h, (/* Host Service Request Definitions */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_HSR_INIT)        FUEL_HSR_INIT );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_HSR_STOP)        FUEL_HSR_STOP );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_HSR_UPDATE)      FUEL_HSR_UPDATE );
+    #pragma write h, ( );
+    #pragma write h, (/* Function Mode Bit Definitions */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_FM0_ACTIVE_LOW)  FUEL_FM0_ACTIVE_LOW );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_FM0_ACTIVE_HIGH) FUEL_FM0_ACTIVE_HIGH );
+    #pragma write h, ( );
+    #pragma write h, (/* Parameter Definitions */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_ERROR                     ) ::ETPUlocation (FUEL, error ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_TDC_ANGLE                 ) ::ETPUlocation (FUEL, tdc_angle ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_TDC_ANGLE_ACTUAL          ) ::ETPUlocation (FUEL, tdc_angle_actual ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_ANGLE_NORMAL_END          ) ::ETPUlocation (FUEL, angle_normal_end ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_ANGLE_STOP                ) ::ETPUlocation (FUEL, angle_stop ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_ANGLE_OFFSET_RECALC       ) ::ETPUlocation (FUEL, angle_offset_recalc ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_INJECTION_TIME            ) ::ETPUlocation (FUEL, injection_time ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_COMPENSATION_TIME         ) ::ETPUlocation (FUEL, compensation_time ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_INJECTION_TIME_MINIMUM    ) ::ETPUlocation (FUEL, injection_time_minimum ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_OFF_TIME_MINIMUM          ) ::ETPUlocation (FUEL, off_time_minimum ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_INJECTION_TIME_APPLIED    ) ::ETPUlocation (FUEL, injection_time_applied ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_INJECTION_TIME_APPLIED_CPU) ::ETPUlocation (FUEL, injection_time_applied_cpu ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_INJECTION_START_ANGLE     ) ::ETPUlocation (FUEL, injection_start_angle ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_INJECTION_START_ANGLE_CPU ) ::ETPUlocation (FUEL, injection_start_angle_cpu ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_PULSE_START_TIME          ) ::ETPUlocation (FUEL, pulse_start_time ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_PULSE_END_TIME            ) ::ETPUlocation (FUEL, pulse_end_time ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_OFFSET_GENERATION_DISABLE        ) ::ETPUlocation (FUEL, generation_disable ) );
+    #pragma write h, ( );
+    #pragma write h, (/* Error Flags Definitions */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_ERROR_STOP_ANGLE_APPLIED)       FUEL_ERROR_STOP_ANGLE_APPLIED);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_ERROR_MINIMUM_INJ_TIME_APPLIED) FUEL_ERROR_MINIMUM_INJ_TIME_APPLIED);
+    #pragma write h, ( );
+    #pragma write h, (/* Generation Disable Definitions */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_GENERATION_ALLOWED)             FUEL_GENERATION_ALLOWED);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_FUEL_GENERATION_DISABLED)            FUEL_GENERATION_DISABLED);
+    #pragma write h, ( );
+    #pragma write h, (#endif );
+    
+    /*********************************************************************
+     *
+     * Copyright:
+     *	Freescale Semiconductor, INC. All Rights Reserved.
+     *  You are hereby granted a copyright license to use, modify, and
+     *  distribute the SOFTWARE so long as this entire notice is
+     *  retained without alteration in any modified and/or redistributed
+     *  versions, and that such modified versions are clearly identified
+     *  as such. No licenses are granted by implication, estoppel or
+     *  otherwise under any patents or trademarks of Freescale
+     *  Semiconductor, Inc. This software is provided on an "AS IS"
+     *  basis and without warranty.
+     *
+     *  To the maximum extent permitted by applicable law, Freescale
+     *  Semiconductor DISCLAIMS ALL WARRANTIES WHETHER EXPRESS OR IMPLIED,
+     *  INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A
+     *  PARTICULAR PURPOSE AND ANY WARRANTY AGAINST INFRINGEMENT WITH
+     *  REGARD TO THE SOFTWARE (INCLUDING ANY MODIFIED VERSIONS THEREOF)
+     *  AND ANY ACCOMPANYING WRITTEN MATERIALS.
+     *
+     *  To the maximum extent permitted by applicable law, IN NO EVENT
+     *  SHALL Freescale Semiconductor BE LIABLE FOR ANY DAMAGES WHATSOEVER
+     *  (INCLUDING WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS,
+     *  BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR OTHER
+     *  PECUNIARY LOSS) ARISING OF THE USE OR INABILITY TO USE THE SOFTWARE.
+     *
+     *  Freescale Semiconductor assumes no responsibility for the
+     *  maintenance and support of this software
+     ********************************************************************/
+    
+    /*******************************************************************************
+    *
+    *  REVISION HISTORY:
+    *
+    *  FILE OWNER: Milan Brejl [r54529]
+    *  Revision 1.0  2014/03/16  r54529
+    *  Minor comment and formating improvements. MISRA compliancy check.
+    *  Ready for eTPU Engine Control Library release 1.0.
+    *
+    *  Revision 0.2  2013/09/05  r54529
+    *  Generation disable added + minor updates.
+    *
+    *  Revision 0.1  2013/08/27  r54529
+    *  Initial version.
+    *
+    *******************************************************************************/

@@ -1,0 +1,1432 @@
+// assembly code generated from source file etpuc_knock.c
+
+.file "..\..\src\etpuc_knock.c";
+.producer ETEC_cc;
+.version 3, 0, A;
+.target ETPU1;
+.compdir "C:\GIT\ASHWARE\Tests\Drivers\EnhancedEngineControl\src\";
+
+.regisgp TPR, 0;
+.regisgp TRR, 0;
+.regisgp TCR1, 0;
+.regisgp TCR2, 0;
+
+.file "..\..\src\etpuc_knock.c";
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\etpu_std.h";
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\ETpu_Hw.h";
+.def register_a; .scl 13; .type 0x4; .endef;
+.def register_ac; .scl 13; .type 0x4; .endef;
+.def registera; .scl 13; .type 0x4; .endef;
+.def register_b; .scl 13; .type 0x4; .endef;
+.def register_c; .scl 13; .type 0x4; .endef;
+.def register_d; .scl 13; .type 0x4; .endef;
+.def register_chan; .scl 13; .type 0xc; .endef;
+.def register_diob; .scl 13; .type 0x4; .endef;
+.def register_erta; .scl 13; .type 0x4; .endef;
+.def register_ertb; .scl 13; .type 0x4; .endef;
+.def register_link; .scl 13; .type 0xc; .endef;
+.def register_mach; .scl 13; .type 0x4; .endef;
+.def register_macl; .scl 13; .type 0x4; .endef;
+.def register_p; .scl 13; .type 0x4; .endef;
+.def register_p23_0; .scl 13; .type 0x4; .endef;
+.def register_rar; .scl 13; .type 0x4; .endef;
+.def register_sr; .scl 13; .type 0x4; .endef;
+.def register_tcr1; .scl 13; .type 0x4; .endef;
+.def register_tcr2; .scl 13; .type 0x4; .endef;
+.def register_tpr; .scl 13; .type 0xd; .endef;
+.def register_trr; .scl 13; .type 0x4; .endef;
+.def register_chan_base; .scl 13; .type 0xe; .endef;
+.def register_engine_base; .scl 13; .type 0xe; .endef;
+.def register_p31_24; .scl 13; .type 0x2; .endef;
+.def register_p23_16; .scl 13; .type 0x2; .endef;
+.def register_p15_8; .scl 13; .type 0x2; .endef;
+.def register_p7_0; .scl 13; .type 0x2; .endef;
+.def register_p31_16; .scl 13; .type 0x3; .endef;
+.def register_p15_0; .scl 13; .type 0x3; .endef;
+.def register_p31_0; .scl 13; .type 0x5; .endef;
+.def register_cc; .scl 13; .tag cc_struct; .type 0x0; .endef;
+
+.def tpr_struct; .scl 10; .type 0x8; .size 2; .endef;
+.def TICKS; .val 0x6; .scl 18; .size 10; .type 0xd; .endef;
+.def TPR10; .val 0x5; .scl 18; .size 1; .type 0xd; .endef;
+.def HOLD; .val 0x4; .scl 18; .size 1; .type 0xd; .endef;
+.def IPH; .val 0x3; .scl 18; .size 1; .type 0xd; .endef;
+.def MISSCNT; .val 0x1; .scl 18; .size 2; .type 0xd; .endef;
+.def LAST; .val 0x0; .scl 18; .size 1; .type 0xd; .endef;
+.def; .eos; .scl 102; .endef;
+
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\etpu_std.h";
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\ETpu_Lib.h";
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\etpu_std.h";
+.file "..\..\src\etpuc_knock.c";
+.file "..\..\src\etpuc_knock.h";
+
+.def KNOCK_WINDOW; .scl 10; .type 0x8; .size 7; .align 1; .endef;
+.def start; .val 0x0; .scl 8; .type 0x4; .const 0x1; .endef;
+.def width; .val 0x4; .scl 8; .type 0x4; .const 0x1; .endef;
+.def; .eos; .scl 102; .endef;
+
+.line 93;
+.def KNOCK; .scl 201; .type 0x80000006; .size 32; .endef;
+.line 74;
+.def _KNOCK_AW613E_INIT_; .val 0xffffffff; .scl 5; .etpuclass KNOCK; .type 0x80000022; .endef;
+.line 75;
+.def _KNOCK_AW613E_STOP_; .val 0xffffffff; .scl 5; .etpuclass KNOCK; .type 0x80000022; .endef;
+.line 76;
+.def _KNOCK_AW613E_WINDOW_START_; .val 0xffffffff; .scl 5; .etpuclass KNOCK; .type 0x80000022; .endef;
+.line 77;
+.def _KNOCK_AW613E_WINDOW_END_; .val 0xffffffff; .scl 5; .etpuclass KNOCK; .type 0x80000022; .endef;
+.line 78;
+.def _KNOCK_AW613E_TRIGGER_; .val 0xffffffff; .scl 5; .etpuclass KNOCK; .type 0x80000022; .endef;
+.line 85;
+.def _KNOCK_AW613E_ScheduleStartAngle_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass KNOCK; .type 0x80000029; .endef;
+
+.file "..\..\src\etpuc_knock.c";
+.file "..\..\src\etpuc_crank.h";
+.line 163;
+.def CRANK; .scl 201; .type 0x80000006; .size 92; .endef;
+.line 123;
+.def _CRANK_AW613E_INIT_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 124;
+.def _CRANK_AW613E_ANGLE_ADJUST_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 125;
+.def _CRANK_AW613E_CRANK_WITH_GAP_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 126;
+.def _CRANK_AW613E_CRANK_WITH_ADDITIONAL_TOOTH_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 129;
+.def _CRANK_AW613E_INIT_EMUL_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 130;
+.def _CRANK_AW613E_ANGLE_ADJUST_EMUL_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 131;
+.def _CRANK_AW613E_SET_SPEED_EMUL_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 132;
+.def _CRANK_AW613E_CRANK_WITH_GAP_EMUL_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000022; .endef;
+.line 140;
+.def _CRANK_AW613E_ToothArray_Log_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x21; .endef;
+.line 141;
+.def _CRANK_AW613E_Set_TRR_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x21; .endef;
+.line 146;
+.def _CRANK_AW613E_Window_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000029; .endef;
+.line 148;
+.def _CRANK_AW613E_WindowAcrossGap_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000029; .endef;
+.line 150;
+.def _CRANK_AW613E_WindowCloseAt_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000029; .endef;
+.line 153;
+.def _CRANK_AW613E_WindowClose_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000029; .endef;
+.line 154;
+.def _CRANK_AW613E_Stall_NoReturn_; .val 0xffffffff; .scl 5; .etpuclass CRANK; .type 0x80000029; .endef;
+
+.file "..\..\src\etpuc_knock.c";
+.file "..\..\src\etpuc_set.h";
+.file "..\..\src\etpuc_knock.c";
+.line 402;
+.pragmawrite h, (::ETPUfilename (cpu/etpu_knock_auto.h));
+.line 403;
+.pragmawrite h, (/**************************************************************** );
+.line 404;
+.pragmawrite h, (* WARNING: This file is automatically generated. DO NOT EDIT IT! );
+.line 405;
+.pragmawrite h, (*);
+.line 406;
+.pragmawrite h, (* COPYRIGHT (c) Freescale 2004-2014, All Rights Reserved );
+.line 407;
+.pragmawrite h, (*);
+.line 408;
+.pragmawrite h, (* FILE NAME: etpu_knock_auto.h  );
+.line 410;
+.pragmawrite h, (* ARCHITECTURE: eTPU );
+.line 414;
+.pragmawrite h, (*);
+.line 415;
+.pragmawrite h, (* This file was generated by: "etpuc_knock.c" on "Jan 12 2022", "17:19:32" );
+.line 416;
+.pragmawrite h, (*);
+.line 417;
+.pragmawrite h, (* This file provides an interface between eTPU code and CPU       );
+.line 418;
+.pragmawrite h, (* code. All references to the eTPU function should be made with   );
+.line 419;
+.pragmawrite h, (* information in this file. This allows only symbolic             );
+.line 420;
+.pragmawrite h, (* information to be referenced which allows the eTPU code to be   );
+.line 421;
+.pragmawrite h, (* optimized without effecting the CPU code.                       );
+.line 422;
+.pragmawrite h, (*****************************************************************/);
+.line 423;
+.pragmawrite h, (#ifndef _ETPU_KNOCK_AUTO_H_ );
+.line 424;
+.pragmawrite h, (#define _ETPU_KNOCK_AUTO_H_ );
+.line 425;
+.pragmawrite h, ( );
+.line 426;
+.pragmawrite h, (/* Function Configuration Information */);
+.line 427;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_FUNCTION_NUMBER) ::ETPUfunctionnumber(KNOCK) );
+.line 428;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_TABLE_SELECT) ::ETPUentrytype(KNOCK) );
+.line 429;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_NUM_PARMS) ::ETPUram(KNOCK) );
+.line 430;
+.pragmawrite h, ( );
+.line 431;
+.pragmawrite h, (/* Host Service Request Definitions */);
+.line 432;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_HSR_INIT)         7 );
+.line 433;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_HSR_STOP)         5 );
+.line 434;
+.pragmawrite h, ( );
+.line 435;
+.pragmawrite h, (/* Function Mode Bit Definitions */);
+.line 436;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_FM0_ACTIVE_HIGH)  0 );
+.line 437;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_FM0_ACTIVE_LOW)   1 );
+.line 438;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_FM1_MODE_GATE)    (0<<1) );
+.line 439;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_FM1_MODE_TRIGGER) (1<<1) );
+.line 440;
+.pragmawrite h, ( );
+.line 441;
+.pragmawrite h, (/* Parameter Definitions */);
+.line 442;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_OFFSET_P_WINDOW_FIRST)    ::ETPUlocation (KNOCK, p_window_first) );
+.line 443;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_OFFSET_P_WINDOW)          ::ETPUlocation (KNOCK, p_window) );
+.line 444;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_OFFSET_TDC_ANGLE)         ::ETPUlocation (KNOCK, tdc_angle) );
+.line 445;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_OFFSET_TDC_ANGLE_ACTUAL)  ::ETPUlocation (KNOCK, tdc_angle_actual) );
+.line 446;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_OFFSET_TCR2_WINDOW_START) ::ETPUlocation (KNOCK, tcr2_window_start) );
+.line 447;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_OFFSET_TCR2_WINDOW_END)   ::ETPUlocation (KNOCK, tcr2_window_end) );
+.line 448;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_OFFSET_TRIGGER_PERIOD)    ::ETPUlocation (KNOCK, trigger_period) );
+.line 449;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_OFFSET_WINDOW_COUNT)      ::ETPUlocation (KNOCK, window_count) );
+.line 450;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_OFFSET_WINDOW_COUNTER)    ::ETPUlocation (KNOCK, window_counter) );
+.line 451;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_OFFSET_IRQ_DMA_OPTIONS)   ::ETPUlocation (KNOCK, irq_dma_options) );
+.line 452;
+.pragmawrite h, ( );
+.line 453;
+.pragmawrite h, (/* Window Structure Definitions */);
+.line 454;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_WINDOW_OFFSET_START)   0x01 );
+.line 455;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_WINDOW_OFFSET_WIDTH)   0x05 );
+.line 456;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_WINDOW_STRUCT_SIZE)    0x08 );
+.line 457;
+.pragmawrite h, ( );
+.line 458;
+.pragmawrite h, (/* IRQ & DMA Options */);
+.line 459;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_IRQ_AT_WINDOW_START)   0x01 );
+.line 460;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_IRQ_AT_WINDOW_END)     0x02 );
+.line 461;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_IRQ_AT_EVERY_TRIGGER)  0x04 );
+.line 462;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_DMA_AT_WINDOW_START)   0x10 );
+.line 463;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_DMA_AT_WINDOW_END)     0x20 );
+.line 464;
+.pragmawrite h, (::ETPUliteral(#define FS_ETPU_KNOCK_DMA_AT_EVERY_TRIGGER)  0x40 );
+.line 465;
+.pragmawrite h, ( );
+.line 466;
+.pragmawrite h, (#endif );
+.file "..\..\src\etpuc_knock.h";
+.line 58;
+.def _KNOCK_AW613E_window_count_; .val 0x0; .scl 3; .etpuclass KNOCK; .type 0xc; .const 0x1; .endef;
+.line 59;
+.def _KNOCK_AW613E_p_window_first_; .val 0x1; .scl 3; .etpuclass KNOCK; .tag KNOCK_WINDOW; .type 0x18; .const 0x1; .endef;
+.line 60;
+.def _KNOCK_AW613E_window_counter_; .val 0x4; .scl 3; .etpuclass KNOCK; .type 0xc; .endef;
+.line 61;
+.def _KNOCK_AW613E_p_window_; .val 0x5; .scl 3; .etpuclass KNOCK; .tag KNOCK_WINDOW; .type 0x18; .endef;
+.line 62;
+.def _KNOCK_AW613E_tdc_angle_; .val 0x9; .scl 3; .etpuclass KNOCK; .type 0x4; .const 0x1; .endef;
+.line 63;
+.def _KNOCK_AW613E_tdc_angle_actual_; .val 0xd; .scl 3; .etpuclass KNOCK; .type 0x4; .endef;
+.line 64;
+.def _KNOCK_AW613E_tcr2_window_start_; .val 0x11; .scl 3; .etpuclass KNOCK; .type 0x4; .endef;
+.line 65;
+.def _KNOCK_AW613E_tcr2_window_end_; .val 0x15; .scl 3; .etpuclass KNOCK; .type 0x4; .endef;
+.line 66;
+.def _KNOCK_AW613E_trigger_period_; .val 0x19; .scl 3; .etpuclass KNOCK; .type 0xe; .const 0x1; .endef;
+.line 67;
+.def _KNOCK_AW613E_irq_dma_options_; .val 0x8; .scl 3; .etpuclass KNOCK; .type 0xc; .const 0x1; .endef;
+.line 92;
+.defentry; .etpuclass KNOCK; .ettable KNOCK; .endentry;
+.line 93;
+.def _KNOCK_AW613E___STACKBASE_; .val 0x1d; .scl 3; .etpuclass KNOCK; .type 0x4; .endef;
+.file "..\..\src\etpuc_crank.h";
+.line -1;
+.def _AW_CHAN_ALIAS_0; .val 0x54; .scl 3; .etpuclass CRANK; .type 0xf; .endef;
+.line 81;
+.def _CRANK_AW613E_blank_time_; .val 0x1; .scl 3; .etpuclass CRANK; .type 0xe; .const 0x1; .endef;
+.line 82;
+.def _CRANK_AW613E_tcr1_clock_source_div1_; .val 0x0; .scl 3; .etpuclass CRANK; .type 0xc; .const 0x1; .endef;
+.line 83;
+.def _CRANK_AW613E_tcr2_ticks_per_tooth_; .val 0x5; .scl 3; .etpuclass CRANK; .type 0xe; .const 0x1; .endef;
+.line 84;
+.def _CRANK_AW613E_tcr2_ticks_per_add_tooth_; .val 0x9; .scl 3; .etpuclass CRANK; .type 0xe; .const 0x1; .endef;
+.line 85;
+.def _CRANK_AW613E_last_tooth_tcr1_time_; .val 0xd; .scl 3; .etpuclass CRANK; .type 0xe; .endef;
+.line 86;
+.def _CRANK_AW613E_last_tooth_period_; .val 0x11; .scl 3; .etpuclass CRANK; .type 0xe; .endef;
+.line 87;
+.def _CRANK_AW613E_last_tooth_period_norm_; .val 0x15; .scl 3; .etpuclass CRANK; .type 0xe; .endef;
+.line 88;
+.def _CRANK_AW613E_last_last_tooth_period_norm_; .val 0x19; .scl 3; .etpuclass CRANK; .type 0xe; .endef;
+.line 89;
+.def _CRANK_AW613E_additional_tooth_period_; .val 0x1d; .scl 3; .etpuclass CRANK; .type 0xe; .endef;
+.line 90;
+.def _CRANK_AW613E_tcr2_adjustment_; .val 0x21; .scl 3; .etpuclass CRANK; .type 0x4; .endef;
+.line 91;
+.def _CRANK_AW613E_gap_ratio_; .val 0x25; .scl 3; .etpuclass CRANK; .type 0x8000000f; .const 0x1; .endef;
+.line 92;
+.def _CRANK_AW613E_win_ratio_normal_; .val 0x29; .scl 3; .etpuclass CRANK; .type 0x8000000f; .const 0x1; .endef;
+.line 93;
+.def _CRANK_AW613E_win_ratio_across_gap_; .val 0x2d; .scl 3; .etpuclass CRANK; .type 0x8000000f; .const 0x1; .endef;
+.line 94;
+.def _CRANK_AW613E_win_ratio_after_gap_; .val 0x31; .scl 3; .etpuclass CRANK; .type 0x8000000f; .const 0x1; .endef;
+.line 95;
+.def _CRANK_AW613E_win_ratio_after_timeout_; .val 0x35; .scl 3; .etpuclass CRANK; .type 0x8000000f; .const 0x1; .endef;
+.line 96;
+.def _CRANK_AW613E_first_tooth_timeout_; .val 0x39; .scl 3; .etpuclass CRANK; .type 0xe; .const 0x1; .endef;
+.line 97;
+.def _CRANK_AW613E_link_cam_; .val 0x3c; .scl 3; .etpuclass CRANK; .type 0xf; .const 0x1; .endef;
+.line 98;
+.def _CRANK_AW613E_link_1_; .val 0x40; .scl 3; .etpuclass CRANK; .type 0xf; .const 0x1; .endef;
+.line 99;
+.def _CRANK_AW613E_link_2_; .val 0x44; .scl 3; .etpuclass CRANK; .type 0xf; .const 0x1; .endef;
+.line 100;
+.def _CRANK_AW613E_link_3_; .val 0x48; .scl 3; .etpuclass CRANK; .type 0xf; .const 0x1; .endef;
+.line 101;
+.def _CRANK_AW613E_link_4_; .val 0x4c; .scl 3; .etpuclass CRANK; .type 0xf; .const 0x1; .endef;
+.line 102;
+.def _CRANK_AW613E_teeth_till_gap_; .val 0x4; .scl 3; .etpuclass CRANK; .type 0xc; .const 0x1; .endef;
+.line 103;
+.def _CRANK_AW613E_teeth_in_gap_; .val 0x8; .scl 3; .etpuclass CRANK; .type 0x2; .const 0x1; .endef;
+.line 104;
+.def _CRANK_AW613E_misscnt_mask_; .val 0x0; .scl 3; .etpuclass CRANK; .type 0xd; .const 0x1; .alias _AW_CHAN_ALIAS_0; .endef;
+.line 105;
+.def _CRANK_AW613E_teeth_per_cycle_; .val 0xc; .scl 3; .etpuclass CRANK; .type 0xc; .const 0x1; .endef;
+.line 106;
+.def _CRANK_AW613E_teeth_per_sync_; .val 0x10; .scl 3; .etpuclass CRANK; .type 0xc; .const 0x1; .endef;
+.line 107;
+.def _CRANK_AW613E_tooth_counter_gap_; .val 0x14; .scl 3; .etpuclass CRANK; .type 0xc; .endef;
+.line 108;
+.def _CRANK_AW613E_tooth_counter_cycle_; .val 0x18; .scl 3; .etpuclass CRANK; .type 0xc; .endef;
+.line 109;
+.def _CRANK_AW613E_blank_teeth_; .val 0x1c; .scl 3; .etpuclass CRANK; .type 0xc; .endef;
+.line 110;
+.def _CRANK_AW613E_state_; .val 0x20; .scl 3; .etpuclass CRANK; .type 0xc; .endef;
+.line 111;
+.def _CRANK_AW613E_error_; .val 0x24; .scl 3; .etpuclass CRANK; .type 0xc; .endef;
+.line 112;
+.def _CRANK_AW613E_tooth_period_log_; .val 0x51; .scl 3; .etpuclass CRANK; .type 0x1e; .const 0x1; .endef;
+.line 161;
+.defentry; .etpuclass CRANK; .ettable CRANK; .endentry;
+.line 162;
+.defentry; .etpuclass CRANK; .ettable CRANK_EMUL; .endentry;
+.line 163;
+.def _CRANK_AW613E___STACKBASE_; .val 0x59; .scl 3; .etpuclass CRANK; .type 0x4; .endef;
+.file "..\..\src\etpuc_knock.c";
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\ETpu_Hw.h";
+.line 193;
+.def chan; .val 0x28; .scl 4; .tag register_chan; .type 0x0; .endef;
+.line 194;
+.def ContextReg; .val 0x28; .scl 4; .tag register_chan; .type 0x0; .endef;
+.line 195;
+.def erta; .val 0x10; .scl 4; .tag register_erta; .type 0x0; .endef;
+.line 196;
+.def ertA; .val 0x10; .scl 4; .tag register_erta; .type 0x0; .endef;
+.line 197;
+.def ertb; .val 0x11; .scl 4; .tag register_ertb; .type 0x0; .endef;
+.line 198;
+.def ertB; .val 0x11; .scl 4; .tag register_ertb; .type 0x0; .endef;
+.line 199;
+.def tcr1; .val 0x20; .scl 4; .tag register_tcr1; .type 0x0; .endef;
+.line 200;
+.def tcr2; .val 0x21; .scl 4; .tag register_tcr2; .type 0x0; .endef;
+.line 201;
+.def tpr; .val 0x23; .scl 4; .tag register_tpr; .type 0x0; .endef;
+.line 202;
+.def trr; .val 0x22; .scl 4; .tag register_trr; .type 0x0; .endef;
+.line 203;
+.def link; .val 0x27; .scl 4; .tag register_link; .type 0x0; .endef;
+.line 204;
+.line 205;
+.line 325;
+.line 335;
+.def tpr_reg; .val 0x23; .scl 4; .tag tpr_struct; .size 2; .type 0x8; .endef;
+.line 336;
+.def tpr_str; .val 0x23; .scl 4; .tag tpr_struct; .size 2; .type 0x8; .endef;
+.file "C:\\GIT\\ASHWARE\\Builds\\Include\\ETpu_Lib.h";
+.line 73;
+.def _AtomicBegin; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 74;
+.def _AtomicEnd; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 93;
+.def _CoherentRead24_24; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 94;
+.def _CoherentRead24_8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 95;
+.def _CoherentRead24_32; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 99;
+.def _CoherentWrite24_24; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 100;
+.def _CoherentWrite24_8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 101;
+.def _CoherentWrite24_32; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 120;
+.def _OptimizationBoundaryAll; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 126;
+.def _OptimizationDisableStart; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 127;
+.def _OptimizationDisableEnd; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 141;
+.def _ExitThread; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 157;
+.def __rotate_right_1_b7_0; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 161;
+.def __rotate_right_1_b15_0; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 165;
+.def __rotate_right_1; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 169;
+.def __rotate_right_2n; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 170;
+.def __rotate_right_2n_sf8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 171;
+.def __rotate_right_2n_sf16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 172;
+.def __rotate_right_2n_sf24; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 189;
+.def __abs; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 190;
+.def __abs_sf8; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 191;
+.def __abs_sf16; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 192;
+.def __abs_sf24; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 198;
+.def __shift_right_SR; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 203;
+.def __shift_right_SR48; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 204;
+.def __shift_right_SR48_sf8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 205;
+.def __shift_right_SR48_sf16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 206;
+.def __shift_right_SR48_sf24; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 214;
+.def __shift_left_2n; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 215;
+.def __shift_left_2n_sf8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 216;
+.def __shift_left_2n_sf16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 217;
+.def __shift_left_2n_sf24; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 218;
+.def __shift_right_2n; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 219;
+.def __shift_right_2n_sf8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 220;
+.def __shift_right_2n_sf16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 221;
+.def __shift_right_2n_sf24; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 230;
+.def __bit_n_update; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 231;
+.def __bit_n_update_sf8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 232;
+.def __bit_n_update_sf16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 233;
+.def __bit_n_update_sf24; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 242;
+.def __bit_n_exchange_C; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 243;
+.def __bit_n_exchange_C_sf8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 244;
+.def __bit_n_exchange_C_sf16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 245;
+.def __bit_n_exchange_C_sf24; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 256;
+.def __mults8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 257;
+.def __mults16; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 258;
+.def __mults24; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 260;
+.def __multu8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 261;
+.def __multu16; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 262;
+.def __multu24; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 265;
+.def __macs; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 268;
+.def __macu; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 271;
+.def __fmults8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 274;
+.def __fmults16; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 277;
+.def __fmultu8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 280;
+.def __fmultu16; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 283;
+.def __divu8; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 284;
+.def __divu16; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 285;
+.def __divu24; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 347;
+.def mulir; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 348;
+.def muliur; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 352;
+.def muli8r8; .val 0xffffffff; .scl 5; .type 0x22; .endef;
+.line 353;
+.def muli8ur8; .val 0xffffffff; .scl 5; .type 0x2c; .endef;
+.line 354;
+.def muli16r16; .val 0xffffffff; .scl 5; .type 0x23; .endef;
+.line 355;
+.def muli16ur16; .val 0xffffffff; .scl 5; .type 0x2d; .endef;
+.line 356;
+.def muli24r8; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 357;
+.def muli24ur8; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 358;
+.def muli24r16; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 359;
+.def muli24ur16; .val 0xffffffff; .scl 5; .type 0x2e; .endef;
+.line 361;
+.def muli8r8u; .val 0xffffffff; .scl 5; .type 0x22; .endef;
+.line 362;
+.def muli16r16u; .val 0xffffffff; .scl 5; .type 0x23; .endef;
+.line 381;
+.def _Error_handler_entry; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 382;
+.def _Error_handler_unexpected_thread; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 383;
+.def _Error_handler_scm_off_weeds; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.line 384;
+.def _Error_handler_fill_weeds; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.file "..\..\src\etpuc_crank.h";
+.line 123;
+.def _CRANK_AW613E_INIT_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 124;
+.def _CRANK_AW613E_ANGLE_ADJUST_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 125;
+.def _CRANK_AW613E_CRANK_WITH_GAP_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 126;
+.def _CRANK_AW613E_CRANK_WITH_ADDITIONAL_TOOTH_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 129;
+.def _CRANK_AW613E_INIT_EMUL_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 130;
+.def _CRANK_AW613E_ANGLE_ADJUST_EMUL_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 131;
+.def _CRANK_AW613E_SET_SPEED_EMUL_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 132;
+.def _CRANK_AW613E_CRANK_WITH_GAP_EMUL_; .val 0xffffffff; .scl 5; .type 0x80000022; .endef;
+.line 140;
+.def _CRANK_AW613E_ToothArray_Log_; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 141;
+.def _CRANK_AW613E_Set_TRR_; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.line 146;
+.def _CRANK_AW613E_Window_NoReturn_; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.line 148;
+.def _CRANK_AW613E_WindowAcrossGap_NoReturn_; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.line 150;
+.def _CRANK_AW613E_WindowCloseAt_NoReturn_; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.line 153;
+.def _CRANK_AW613E_WindowClose_NoReturn_; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.line 154;
+.def _CRANK_AW613E_Stall_NoReturn_; .val 0xffffffff; .scl 5; .type 0x80000029; .endef;
+.line 170;
+.def CRANK_Time_to_Angle_HighRes; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 172;
+.def CRANK_Time_to_Angle_LowRes; .val 0xffffffff; .scl 5; .type 0x24; .endef;
+.line 180;
+.line 180;
+.def eng_pos_state; .scl 5; .type 0xc; .endef;
+.line 181;
+.line 181;
+.def eng_cycle_tcr2_ticks; .scl 5; .type 0xe; .const 0x1; .endef;
+.line 182;
+.line 182;
+.def eng_cycle_tcr2_start; .scl 5; .type 0xe; .endef;
+.line 183;
+.line 183;
+.def eng_trr_norm; .scl 5; .type 0xe; .endef;
+.file "..\..\src\etpuc_set.h";
+.line 31;
+.def Link4; .val 0xffffffff; .scl 5; .type 0x21; .endef;
+.file "..\..\src\etpuc_knock.c";
+
+.line 91;
+.def _KNOCK_AW613E_ScheduleStartAngle_NoReturn_; .val 0x0; .scl 2; .etpuclass KNOCK; .type 0x80000029; .endef;
+.def; .bf; .scl 101; .tag _KNOCK_AW613E_ScheduleStartAngle_NoReturn_; .endef;
+.def _KNOCK_AW613E_ScheduleStartAngle_NoReturn_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_ScheduleStartAngle_NoReturn__AW613E_SCOPEBLOCK_0_; .endef;
+.def diob; .val 0x1f; .scl 4; .tag register_diob; .type 0x0; .endef;
+
+.line 94;
+	// ram   p_23_0 = p_window;; // *((channel int24 *) 0x5;
+.opstart 0xbfeffb81; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_p_window_,0;  .opend;
+	// alu    diob = p+0x0;;
+.opstart 0x00084419; .opend;
+
+.line 95;
+
+.optBoundary;
+.region atomic, __KNOCK_AW613E_ScheduleStartAngle_NoReturn__AW613E___ATOMIC_REGION_0_;
+	// nop;;
+.opstart 0x4fffffff; .opend;
+.endregion __KNOCK_AW613E_ScheduleStartAngle_NoReturn__AW613E___ATOMIC_REGION_0_;
+.optBoundary;
+
+.inlineAsmStart;
+
+.file "..\..\src\etpuc_knock.c";
+
+.line 97;
+
+.optDisStart;
+
+.line 98;
+// ram   p_23_0 = *((int24 *) diob++);;
+.opstart 0x1feffb9f; .opend;
+
+.line 99;
+// alu    ertB = p+0x0;
+// ram   p_23_0 = *((int24 *) diob);;
+.opstart 0x1fe83bdf; .opend;
+
+.line 100;
+// alu    ertA = p+0x0;;
+.opstart 0x00082419; .opend;
+
+.line 101;
+
+.optDisEnd;
+
+.inlineAsmEnd;
+
+.line 104;
+	// ram   p_23_0 = tdc_angle_actual;; // *((channel int24 *) 0xD;
+.opstart 0xbfeffb83; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_tdc_angle_actual_,0;  .opend;
+	// alu    sr = ertB+0x0;;
+.opstart 0x00031419; .opend;
+	// alu    a = p-sr, SampleFlags;;
+.opstart 0x1c580eff; .opend;
+	// alu    ertB = a+0x0;;
+.opstart 0x00093419; .opend;
+
+.line 105;
+	// alu    p = ertB+0x0;;
+.opstart 0x00037419; .opend;
+	// ram   tcr2_window_start = p_23_0;; // *((channel int24 *) 0x11;
+.opstart 0xbffffb84; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_tcr2_window_start_,0;  .opend;
+
+.line 106;
+	// alu    sr = ertA+0x0;;
+.opstart 0x000e1419; .opend;
+	// alu    a = ertB+sr, SampleFlags;;
+.opstart 0x1f530eff; .opend;
+	// alu    p = a+0x0;;
+.opstart 0x00097419; .opend;
+	// ram   tcr2_window_end = p_23_0;; // *((channel int24 *) 0x15;
+.opstart 0xbffffb85; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_tcr2_window_end_,0;  .opend;
+
+.line 108;
+	// chan  clear MatchRecognitionLatchB;;
+.opstart 0x7fffffbf; .opend;
+
+.line 109;
+	// chan  matchB = ertB, set MatchEnableLatchB;;
+.opstart 0x7fffffdf; .opend;
+
+.line 112;
+	// ram   p_23_0 = p_window;; // *((channel int24 *) 0x5;
+.opstart 0xbfeffb81; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_p_window_,0;  .opend;
+	// alu    a = p+0x8, SampleFlags;;
+.opstart 0x00280019; .opend;
+	// alu    p = a+0x0;;
+.opstart 0x00097419; .opend;
+	// ram   p_window = p_23_0;; // *((channel int24 *) 0x5;
+.opstart 0xbffffb81; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_p_window_,0;  .opend;
+
+.line 114;
+	// ram   p_31_24 = window_counter;; // *((channel int8 *) 0x4;
+.opstart 0xcfeff981; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_window_counter_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    a = a+0x1, SampleFlags;;
+.opstart 0x00090039; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// ram   window_counter = p_31_24;; // *((channel int8 *) 0x4;
+.opstart 0xcffff981; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_window_counter_,0;  .opend;
+
+.line 116;
+	// ram   p_31_24 = window_counter;; // *((channel int8 *) 0x4;
+.opstart 0xcfeff981; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_window_counter_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// ram   p_31_24 = window_count;; // *((channel int8 *) 0x0;
+.opstart 0xcfeff980; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_window_count_,0;  .opend;
+	// alu    sr = p_31_24+0x0;;
+.opstart 0x00021419; .opend;
+	// alu    p_31_24 = sr-a, SampleFlags;;
+.opstart 0x1c3aaeff; .opend;
+	// seq  if LowerOrEqual==false then goto ScheduleStartAngle_NoReturn__AW613E_END_IFELSE_0, flush;;
+.opstart 0xf4d00007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_ScheduleStartAngle_NoReturn__AW613E_END_IFELSE_0_,0;  .opend;
+.def __KNOCK_AW613E_ScheduleStartAngle_NoReturn__AW613E_THEN_IF_ELSE_0_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 117;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_ScheduleStartAngle_NoReturn__AW613E_SCOPEBLOCK_1_; .endef;
+
+.line 119;
+	// ram   window_counter =  0;; // *((channel int8 *) 0x4;
+.opstart 0xcffff901; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_window_counter_,0;  .opend;
+
+.line 120;
+	// ram   p_23_0 = p_window_first;; // *((channel int24 *) 0x1;
+.opstart 0xbfeffb80; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_p_window_first_,0;  .opend;
+	// ram   p_window = p_23_0;; // *((channel int24 *) 0x5;
+.opstart 0xbffffb81; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_p_window_,0;  .opend;
+
+.line 122;
+	// ram   p_23_0 = eng_cycle_tcr2_ticks;; // *((global int24 *) 0x1;
+.opstart 0x9feffb00; .oplabel AID_7_0_,AW6B2D_NAMELESS_CLASS,eng_cycle_tcr2_ticks,0;  .opend;
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+	// ram   p_23_0 = tdc_angle_actual;; // *((channel int24 *) 0xD;
+.opstart 0xbfeffb83; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_tdc_angle_actual_,0;  .opend;
+	// alu    a = p+a, SampleFlags;;
+.opstart 0x1f380eff; .opend;
+	// alu    p = a+0x0;;
+.opstart 0x00097419; .opend;
+	// ram   tdc_angle_actual = p_23_0;; // *((channel int24 *) 0xD;
+.opstart 0xbffffb83; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_tdc_angle_actual_,0;  .opend;
+
+.line 123;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_ScheduleStartAngle_NoReturn__AW613E_SCOPEBLOCK_1_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_ScheduleStartAngle_NoReturn__AW613E_END_IFELSE_0_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 124;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_ScheduleStartAngle_NoReturn__AW613E_SCOPEBLOCK_0_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_ScheduleStartAngle_NoReturn__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _KNOCK_AW613E_ScheduleStartAngle_NoReturn_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_knock.c";
+
+.line 135;
+.def _KNOCK_AW613E_INIT_; .val 0x0; .scl 2; .etpuclass KNOCK; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _KNOCK_AW613E_INIT_; .endef;
+.def _KNOCK_AW613E_INIT_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_INIT__AW613E_SCOPEBLOCK_2_; .endef;
+
+.line 139;
+	// chan  DisableMatchTransitionServicing;;
+.opstart 0xff7ffefb; .opend;
+
+.line 141;
+	// chan  clear MatchEnableLatches;;
+.opstart 0x7ffffffd; .opend;
+
+.line 143;
+	// chan  clear TransitionDetectionLatches;;
+.opstart 0x7fefffff; .opend;
+
+.line 144;
+	// chan  clear LinkServiceRequest;;
+.opstart 0x4ffff7ff; .opend;
+
+.line 145;
+	// chan  clear MatchRecognitionLatchA;;
+.opstart 0x7ffffeff; .opend;
+
+.line 146;
+	// chan  clear MatchRecognitionLatchB;;
+.opstart 0x7fffffbf; .opend;
+
+.line 151;
+	// chan  mode = matchB single transition;;
+.opstart 0x4fffffe9; .opend;
+
+.line 153;
+	// chan  ActionUnitA: tcr1 >= match, capture tcr1;;
+.opstart 0x4ff0ffff; .opend;
+
+.line 154;
+	// chan  ActionUnitB: tcr2 >= match, capture tcr1;;
+.opstart 0x4fff1fff; .opend;
+
+.line 156;
+	// chan  detectA = off;;
+.opstart 0x58ffffff; .opend;
+
+.line 157;
+	// chan  detectB = off;;
+.opstart 0x5f1fffff; .opend;
+
+.line 159;
+	// seq  if FunctionMode0==true then goto INIT__AW613E_ELSE_IFELSE_1, flush;;
+.opstart 0xf3d80007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_INIT__AW613E_ELSE_IFELSE_1_,0;  .opend;
+.def __KNOCK_AW613E_INIT__AW613E_THEN_IF_ELSE_1_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 160;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_INIT__AW613E_SCOPEBLOCK_3_; .endef;
+
+.line 161;
+	// chan  CurrentOutputPin = low;;
+.opstart 0x7ffffdfe; .opend;
+
+.line 162;
+	// chan  FutureOutputPin low on matchA;;
+.opstart 0x4affffff; .opend;
+
+.line 163;
+	// chan  FutureOutputPin high on matchB;;
+.opstart 0x4f3fffff; .opend;
+
+.line 164;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_INIT__AW613E_SCOPEBLOCK_3_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto INIT__AW613E_END_IFELSE_1, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_INIT__AW613E_END_IFELSE_1_,0;  .opend;
+.def __KNOCK_AW613E_INIT__AW613E_ELSE_IFELSE_1_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 166;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_INIT__AW613E_SCOPEBLOCK_4_; .endef;
+
+.line 167;
+	// chan  CurrentOutputPin = high;;
+.opstart 0x7ffffbfe; .opend;
+
+.line 168;
+	// chan  FutureOutputPin high on matchA;;
+.opstart 0x49ffffff; .opend;
+
+.line 169;
+	// chan  FutureOutputPin low on matchB;;
+.opstart 0x4f5fffff; .opend;
+
+.line 170;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_INIT__AW613E_SCOPEBLOCK_4_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_INIT__AW613E_END_IFELSE_1_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 172;
+	// chan  enable output buffer;;
+.opstart 0x4ff8ffff; .opend;
+
+.line 174;
+	// chan  clear ChannelFlag0;;
+.opstart 0x0ffffe7e; .opend;
+
+.line 176;
+	// ram   p_23_0 = tdc_angle;; // *((channel int24 *) 0x9;
+.opstart 0xbfeffb82; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_tdc_angle_,0;  .opend;
+	// alu    a = p+0x0;;
+.opstart 0x00080419; .opend;
+	// ram   p_23_0 = eng_cycle_tcr2_start;; // *((global int24 *) 0x1;
+.opstart 0x9feffb00; .oplabel AID_7_0_,AW6B2D_NAMELESS_CLASS,eng_cycle_tcr2_start,0;  .opend;
+	// alu    a = p+a, SampleFlags;;
+.opstart 0x1f380eff; .opend;
+	// alu    p = a+0x0;;
+.opstart 0x00097419; .opend;
+	// ram   tdc_angle_actual = p_23_0;; // *((channel int24 *) 0xD;
+.opstart 0xbffffb83; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_tdc_angle_actual_,0;  .opend;
+
+.line 178;
+	// ram   p_23_0 = p_window_first;; // *((channel int24 *) 0x1;
+.opstart 0xbfeffb80; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_p_window_first_,0;  .opend;
+	// ram   p_window = p_23_0;; // *((channel int24 *) 0x5;
+.opstart 0xbffffb81; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_p_window_,0;  .opend;
+
+.line 179;
+	// ram   window_counter =  0;; // *((channel int8 *) 0x4;
+.opstart 0xcffff901; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_window_counter_,0;  .opend;
+
+.line 181;
+	// chan  EnableMatchTransitionServicing;;
+.opstart 0xff3ffefb; .opend;
+
+.line 183;
+	// ram   p_31_24 = eng_pos_state;; // *((global int8 *) 0x0;
+.opstart 0xcfeff100; .oplabel AID_7_0_,AW6B2D_NAMELESS_CLASS,eng_pos_state,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    nil = a ^ 0x3, SampleFlags;;
+.opstart 0x0809fbea; .opend;
+	// seq  if z==true then goto INIT__AW613E_END_IFELSE_2, flush;;
+.opstart 0xf0d80007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_INIT__AW613E_END_IFELSE_2_,0;  .opend;
+.def __KNOCK_AW613E_INIT__AW613E_THEN_IF_ELSE_2_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 184;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_INIT__AW613E_SCOPEBLOCK_5_; .endef;
+
+.line 186;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+
+.line 187;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_INIT__AW613E_SCOPEBLOCK_5_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_INIT__AW613E_END_IFELSE_2_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 190;
+	// seq  goto ScheduleStartAngle_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_KNOCK_AW613E_ScheduleStartAngle_NoReturn_,0;  .opend;
+
+.line 191;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_INIT__AW613E_SCOPEBLOCK_2_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_INIT__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _KNOCK_AW613E_INIT_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_knock.c";
+
+.line 198;
+.def _KNOCK_AW613E_STOP_; .val 0x0; .scl 2; .etpuclass KNOCK; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _KNOCK_AW613E_STOP_; .endef;
+.def _KNOCK_AW613E_STOP_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_STOP__AW613E_SCOPEBLOCK_6_; .endef;
+
+.line 201;
+	// chan  DisableMatchTransitionServicing;;
+.opstart 0xff7ffefb; .opend;
+
+.line 203;
+	// chan  clear MatchEnableLatches;;
+.opstart 0x7ffffffd; .opend;
+
+.line 205;
+	// chan  clear TransitionDetectionLatches;;
+.opstart 0x7fefffff; .opend;
+
+.line 206;
+	// chan  clear LinkServiceRequest;;
+.opstart 0x4ffff7ff; .opend;
+
+.line 207;
+	// chan  clear MatchRecognitionLatchA;;
+.opstart 0x7ffffeff; .opend;
+
+.line 208;
+	// chan  clear MatchRecognitionLatchB;;
+.opstart 0x7fffffbf; .opend;
+
+.line 210;
+	// seq  if FunctionMode0==true then goto STOP__AW613E_ELSE_IFELSE_3, flush;;
+.opstart 0xf3d80007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_STOP__AW613E_ELSE_IFELSE_3_,0;  .opend;
+.def __KNOCK_AW613E_STOP__AW613E_THEN_IF_ELSE_3_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 211;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_STOP__AW613E_SCOPEBLOCK_7_; .endef;
+
+.line 212;
+	// chan  CurrentOutputPin = low;;
+.opstart 0x7ffffdfe; .opend;
+
+.line 213;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_STOP__AW613E_SCOPEBLOCK_7_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto STOP__AW613E_END_IFELSE_3, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_STOP__AW613E_END_IFELSE_3_,0;  .opend;
+.def __KNOCK_AW613E_STOP__AW613E_ELSE_IFELSE_3_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 215;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_STOP__AW613E_SCOPEBLOCK_8_; .endef;
+
+.line 216;
+	// chan  CurrentOutputPin = high;;
+.opstart 0x7ffffbfe; .opend;
+
+.line 217;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_STOP__AW613E_SCOPEBLOCK_8_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_STOP__AW613E_END_IFELSE_3_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 218;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_STOP__AW613E_SCOPEBLOCK_6_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_STOP__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _KNOCK_AW613E_STOP_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_knock.c";
+
+.line 224;
+.def _KNOCK_AW613E_WINDOW_START_; .val 0x0; .scl 2; .etpuclass KNOCK; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _KNOCK_AW613E_WINDOW_START_; .endef;
+.def _KNOCK_AW613E_WINDOW_START_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_WINDOW_START__AW613E_SCOPEBLOCK_9_; .endef;
+
+.line 227;
+	// ram   p_31_24 = irq_dma_options;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_irq_dma_options_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// seq  if p.bit(24)==false then goto WINDOW_START__AW613E_END_IFELSE_4, flush;;
+.opstart 0xf5100007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_WINDOW_START__AW613E_END_IFELSE_4_,0;  .opend;
+.def __KNOCK_AW613E_WINDOW_START__AW613E_THEN_IF_ELSE_4_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 228;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_WINDOW_START__AW613E_SCOPEBLOCK_10_; .endef;
+
+.line 229;
+	// chan  set SvcdChan ChannelIntr;;
+.opstart 0xffff3ef9; .opend;
+
+.line 230;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_WINDOW_START__AW613E_SCOPEBLOCK_10_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_WINDOW_START__AW613E_END_IFELSE_4_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 231;
+	// ram   p_31_24 = irq_dma_options;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_irq_dma_options_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// seq  if p.bit(28)==false then goto WINDOW_START__AW613E_END_IFELSE_5, flush;;
+.opstart 0xf6100007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_WINDOW_START__AW613E_END_IFELSE_5_,0;  .opend;
+.def __KNOCK_AW613E_WINDOW_START__AW613E_THEN_IF_ELSE_5_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 232;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_WINDOW_START__AW613E_SCOPEBLOCK_11_; .endef;
+
+.line 233;
+	// chan  set SvcdChan DataTransferIntr;;
+.opstart 0xffff7ef9; .opend;
+
+.line 234;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_WINDOW_START__AW613E_SCOPEBLOCK_11_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_WINDOW_START__AW613E_END_IFELSE_5_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 237;
+	// chan  set ChannelFlag0;;
+.opstart 0x0ffffefe; .opend;
+
+.line 239;
+	// seq  if FunctionMode1==true then goto WINDOW_START__AW613E_ELSE_IFELSE_6, flush;;
+.opstart 0xf3980007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_WINDOW_START__AW613E_ELSE_IFELSE_6_,0;  .opend;
+.def __KNOCK_AW613E_WINDOW_START__AW613E_THEN_IF_ELSE_6_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 240;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_WINDOW_START__AW613E_SCOPEBLOCK_12_; .endef;
+
+.line 242;
+	// chan  clear ChannelFlag1;;
+.opstart 0x0fffff7e; .opend;
+
+.line 244;
+	// chan  FutureOutputPin low on matchB;;
+.opstart 0x4f5fffff; .opend;
+
+.line 245;
+	// seq  if FunctionMode0==false then goto WINDOW_START__AW613E_END_IFELSE_7, flush;;
+.opstart 0xf3d00007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_WINDOW_START__AW613E_END_IFELSE_7_,0;  .opend;
+.def __KNOCK_AW613E_WINDOW_START__AW613E_THEN_IF_ELSE_7_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 246;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_WINDOW_START__AW613E_SCOPEBLOCK_13_; .endef;
+
+.line 247;
+	// chan  FutureOutputPin high on matchB;;
+.opstart 0x4f3fffff; .opend;
+
+.line 248;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_WINDOW_START__AW613E_SCOPEBLOCK_13_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_WINDOW_START__AW613E_END_IFELSE_7_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 250;
+	// ram   p_23_0 = tcr2_window_end;; // *((channel int24 *) 0x15;
+.opstart 0xbfeffb85; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_tcr2_window_end_,0;  .opend;
+	// alu    ertB = p+0x0;;
+.opstart 0x00083419; .opend;
+
+.line 251;
+	// chan  clear MatchRecognitionLatchB;;
+.opstart 0x7fffffbf; .opend;
+
+.line 252;
+	// chan  matchB = ertB, set MatchEnableLatchB;;
+.opstart 0x7fffffdf; .opend;
+
+.line 253;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_WINDOW_START__AW613E_SCOPEBLOCK_12_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto WINDOW_START__AW613E_END_IFELSE_6, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_WINDOW_START__AW613E_END_IFELSE_6_,0;  .opend;
+.def __KNOCK_AW613E_WINDOW_START__AW613E_ELSE_IFELSE_6_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 255;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_WINDOW_START__AW613E_SCOPEBLOCK_14_; .endef;
+
+.line 257;
+	// chan  set ChannelFlag1;;
+.opstart 0x0ffffffe; .opend;
+
+.line 259;
+	// chan  ActionUnitB: tcr1 >= match, capture tcr1;;
+.opstart 0x4fff0fff; .opend;
+
+.line 261;
+	// ram   p_23_0 = trigger_period;; // *((channel int24 *) 0x19;
+.opstart 0xbfeffb86; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_trigger_period_,0;  .opend;
+	// alu    a = (p+0x0) >> 1, SampleFlags;;
+.opstart 0x18080792; .opend;
+	// alu    a = ertB+a, SampleFlags;;
+.opstart 0x1f330eff; .opend;
+	// alu    ertA = a+0x0;;
+.opstart 0x00092419; .opend;
+
+.line 262;
+	// chan  clear MatchRecognitionLatchB;;
+.opstart 0x7fffffbf; .opend;
+
+.line 263;
+	// chan  clear MatchRecognitionLatchA;;
+.opstart 0x7ffffeff; .opend;
+
+.line 264;
+	// chan  matchA = ertA, set MatchEnableLatchA;;
+.opstart 0x7fffff7f; .opend;
+
+.line 266;
+	// ram   p_23_0 = trigger_period;; // *((channel int24 *) 0x19;
+.opstart 0xbfeffb86; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_trigger_period_,0;  .opend;
+	// alu    a = ertB+p, SampleFlags;;
+.opstart 0x1f130eff; .opend;
+	// alu    ertB = a+0x0;;
+.opstart 0x00093419; .opend;
+
+.line 267;
+	// chan  matchB = ertB, set MatchEnableLatchB;;
+.opstart 0x7fffffdf; .opend;
+
+.line 268;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_WINDOW_START__AW613E_SCOPEBLOCK_14_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_WINDOW_START__AW613E_END_IFELSE_6_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 269;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_WINDOW_START__AW613E_SCOPEBLOCK_9_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_WINDOW_START__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _KNOCK_AW613E_WINDOW_START_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_knock.c";
+
+.line 275;
+.def _KNOCK_AW613E_WINDOW_END_; .val 0x0; .scl 2; .etpuclass KNOCK; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _KNOCK_AW613E_WINDOW_END_; .endef;
+.def _KNOCK_AW613E_WINDOW_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_WINDOW_END__AW613E_SCOPEBLOCK_15_; .endef;
+
+.line 278;
+	// ram   p_31_24 = irq_dma_options;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_irq_dma_options_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// seq  if p.bit(25)==false then goto WINDOW_END__AW613E_END_IFELSE_8, flush;;
+.opstart 0xf5500007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_WINDOW_END__AW613E_END_IFELSE_8_,0;  .opend;
+.def __KNOCK_AW613E_WINDOW_END__AW613E_THEN_IF_ELSE_8_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 279;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_WINDOW_END__AW613E_SCOPEBLOCK_16_; .endef;
+
+.line 280;
+	// chan  set SvcdChan ChannelIntr;;
+.opstart 0xffff3ef9; .opend;
+
+.line 281;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_WINDOW_END__AW613E_SCOPEBLOCK_16_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_WINDOW_END__AW613E_END_IFELSE_8_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 282;
+	// ram   p_31_24 = irq_dma_options;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_irq_dma_options_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// seq  if p.bit(29)==false then goto WINDOW_END__AW613E_END_IFELSE_9, flush;;
+.opstart 0xf6500007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_WINDOW_END__AW613E_END_IFELSE_9_,0;  .opend;
+.def __KNOCK_AW613E_WINDOW_END__AW613E_THEN_IF_ELSE_9_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 283;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_WINDOW_END__AW613E_SCOPEBLOCK_17_; .endef;
+
+.line 284;
+	// chan  set SvcdChan DataTransferIntr;;
+.opstart 0xffff7ef9; .opend;
+
+.line 285;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_WINDOW_END__AW613E_SCOPEBLOCK_17_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_WINDOW_END__AW613E_END_IFELSE_9_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 288;
+	// chan  clear ChannelFlag0;;
+.opstart 0x0ffffe7e; .opend;
+
+.line 290;
+	// chan  FutureOutputPin high on matchB;;
+.opstart 0x4f3fffff; .opend;
+
+.line 291;
+	// seq  if FunctionMode0==false then goto WINDOW_END__AW613E_END_IFELSE_10, flush;;
+.opstart 0xf3d00007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_WINDOW_END__AW613E_END_IFELSE_10_,0;  .opend;
+.def __KNOCK_AW613E_WINDOW_END__AW613E_THEN_IF_ELSE_10_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 292;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_WINDOW_END__AW613E_SCOPEBLOCK_18_; .endef;
+
+.line 293;
+	// chan  FutureOutputPin low on matchB;;
+.opstart 0x4f5fffff; .opend;
+
+.line 294;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_WINDOW_END__AW613E_SCOPEBLOCK_18_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_WINDOW_END__AW613E_END_IFELSE_10_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 296;
+	// seq  goto ScheduleStartAngle_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_KNOCK_AW613E_ScheduleStartAngle_NoReturn_,0;  .opend;
+
+.line 297;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_WINDOW_END__AW613E_SCOPEBLOCK_15_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_WINDOW_END__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _KNOCK_AW613E_WINDOW_END_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_knock.c";
+
+.line 303;
+.def _KNOCK_AW613E_TRIGGER_; .val 0x0; .scl 2; .etpuclass KNOCK; .type 0x80000022; .endef;
+.def; .bf; .scl 101; .tag _KNOCK_AW613E_TRIGGER_; .endef;
+.def _KNOCK_AW613E_TRIGGER_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_19_; .endef;
+
+.line 306;
+	// ram   p_31_24 = irq_dma_options;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_irq_dma_options_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// seq  if p.bit(26)==false then goto TRIGGER__AW613E_END_IFELSE_11, flush;;
+.opstart 0xf5900007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_TRIGGER__AW613E_END_IFELSE_11_,0;  .opend;
+.def __KNOCK_AW613E_TRIGGER__AW613E_THEN_IF_ELSE_11_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 307;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_20_; .endef;
+
+.line 308;
+	// chan  set SvcdChan ChannelIntr;;
+.opstart 0xffff3ef9; .opend;
+
+.line 309;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_20_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_TRIGGER__AW613E_END_IFELSE_11_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 310;
+	// ram   p_31_24 = irq_dma_options;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_irq_dma_options_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// seq  if p.bit(30)==false then goto TRIGGER__AW613E_END_IFELSE_12, flush;;
+.opstart 0xf6900007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_TRIGGER__AW613E_END_IFELSE_12_,0;  .opend;
+.def __KNOCK_AW613E_TRIGGER__AW613E_THEN_IF_ELSE_12_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 311;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_21_; .endef;
+
+.line 312;
+	// chan  set SvcdChan DataTransferIntr;;
+.opstart 0xffff7ef9; .opend;
+
+.line 313;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_21_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_TRIGGER__AW613E_END_IFELSE_12_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 316;
+	// ram   p_23_0 = trigger_period;; // *((channel int24 *) 0x19;
+.opstart 0xbfeffb86; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_trigger_period_,0;  .opend;
+	// alu    a = (p+0x0) >> 1, SampleFlags;;
+.opstart 0x18080792; .opend;
+	// alu    a = ertB+a, SampleFlags;;
+.opstart 0x1f330eff; .opend;
+	// alu    ertA = a+0x0;;
+.opstart 0x00092419; .opend;
+
+.line 317;
+	// chan  clear MatchRecognitionLatchB;;
+.opstart 0x7fffffbf; .opend;
+
+.line 318;
+	// chan  clear MatchRecognitionLatchA;;
+.opstart 0x7ffffeff; .opend;
+
+.line 319;
+	// chan  matchA = ertA, set MatchEnableLatchA;;
+.opstart 0x7fffff7f; .opend;
+
+.line 322;
+	// ram   p_23_0 = tcr2_window_end;; // *((channel int24 *) 0x15;
+.opstart 0xbfeffb85; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_tcr2_window_end_,0;  .opend;
+	// alu    nil = tcr2-p, SampleFlags;;
+.opstart 0x1c1dfeff; .opend;
+	// seq  if LessThan==true then goto TRIGGER__AW613E_ELSE_IFELSE_13, flush;;
+.opstart 0xf4980007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_TRIGGER__AW613E_ELSE_IFELSE_13_,0;  .opend;
+.def __KNOCK_AW613E_TRIGGER__AW613E_THEN_IF_ELSE_13_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 323;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_22_; .endef;
+
+.line 325;
+	// ram   p_31_24 = irq_dma_options;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_irq_dma_options_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// seq  if p.bit(25)==false then goto TRIGGER__AW613E_END_IFELSE_14, flush;;
+.opstart 0xf5500007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_TRIGGER__AW613E_END_IFELSE_14_,0;  .opend;
+.def __KNOCK_AW613E_TRIGGER__AW613E_THEN_IF_ELSE_14_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 326;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_23_; .endef;
+
+.line 327;
+	// chan  set SvcdChan ChannelIntr;;
+.opstart 0xffff3ef9; .opend;
+
+.line 328;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_23_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_TRIGGER__AW613E_END_IFELSE_14_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 329;
+	// ram   p_31_24 = irq_dma_options;; // *((channel int8 *) 0x8;
+.opstart 0xcfeff982; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_irq_dma_options_,0;  .opend;
+	// alu    a = p_31_24+0x0;;
+.opstart 0x00020419; .opend;
+	// alu    p_31_24 = a+0x0;;
+.opstart 0x0009a419; .opend;
+	// seq  if p.bit(29)==false then goto TRIGGER__AW613E_END_IFELSE_15, flush;;
+.opstart 0xf6500007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_TRIGGER__AW613E_END_IFELSE_15_,0;  .opend;
+.def __KNOCK_AW613E_TRIGGER__AW613E_THEN_IF_ELSE_15_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 330;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_24_; .endef;
+
+.line 331;
+	// chan  set SvcdChan DataTransferIntr;;
+.opstart 0xffff7ef9; .opend;
+
+.line 332;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_24_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_TRIGGER__AW613E_END_IFELSE_15_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 335;
+	// chan  clear ChannelFlag0;;
+.opstart 0x0ffffe7e; .opend;
+
+.line 337;
+	// chan  ActionUnitB: tcr2 >= match, capture tcr1;;
+.opstart 0x4fff1fff; .opend;
+
+.line 339;
+	// seq  goto ScheduleStartAngle_NoReturn, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,_KNOCK_AW613E_ScheduleStartAngle_NoReturn_,0;  .opend;
+
+.line 340;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_22_; .stackUsage 0; .scratchpadUsage 0; .endef;
+	// seq  goto TRIGGER__AW613E_END_IFELSE_13, flush;;
+.opstart 0xf7d00007; .oplabel BAF_13_0_,StandardTest,__KNOCK_AW613E_TRIGGER__AW613E_END_IFELSE_13_,0;  .opend;
+.def __KNOCK_AW613E_TRIGGER__AW613E_ELSE_IFELSE_13_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 342;
+.def; .bb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_25_; .endef;
+
+.line 344;
+	// ram   p_23_0 = trigger_period;; // *((channel int24 *) 0x19;
+.opstart 0xbfeffb86; .oplabel AID_6_0_,KNOCK,_KNOCK_AW613E_trigger_period_,0;  .opend;
+	// alu    a = ertB+p, SampleFlags;;
+.opstart 0x1f130eff; .opend;
+	// alu    ertB = a+0x0;;
+.opstart 0x00093419; .opend;
+
+.line 345;
+	// chan  matchB = ertB, set MatchEnableLatchB;;
+.opstart 0x7fffffdf; .opend;
+
+.line 346;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_25_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_TRIGGER__AW613E_END_IFELSE_13_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+
+.line 347;
+.def; .eb; .scl 100; .tag __KNOCK_AW613E_TRIGGER__AW613E_SCOPEBLOCK_19_; .stackUsage 0; .scratchpadUsage 0; .endef;
+.def __KNOCK_AW613E_TRIGGER__AW613E_FUNC_END_; .val 0xffffffff; .scl 200; .type 0xe; .endef;
+	// seq   end;;
+.opstart 0x0fffffff; .opend;
+.def; .ef; .scl 101; .tag _KNOCK_AW613E_TRIGGER_; .endef;
+.breakable;
+
+.file "..\..\src\etpuc_knock.c";
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _Error_handler_unexpected_thread; .index 0; .etpreload dont_care; .etmatch disabled; .line 383; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _Error_handler_unexpected_thread; .index 1; .etpreload dont_care; .etmatch disabled; .line 384; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _Error_handler_unexpected_thread; .index 2; .etpreload dont_care; .etmatch disabled; .line 385; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _Error_handler_unexpected_thread; .index 3; .etpreload dont_care; .etmatch disabled; .line 386; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_STOP_; .index 4; .etpreload dont_care; .etmatch disabled; .line 358; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_INIT_; .index 5; .etpreload dont_care; .etmatch disabled; .line 353; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_INIT_; .index 6; .etpreload dont_care; .etmatch disabled; .line 354; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_INIT_; .index 7; .etpreload dont_care; .etmatch disabled; .line 355; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _Error_handler_unexpected_thread; .index 8; .etpreload dont_care; .etmatch disabled; .line 387; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _Error_handler_unexpected_thread; .index 9; .etpreload dont_care; .etmatch disabled; .line 388; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _Error_handler_unexpected_thread; .index 10; .etpreload dont_care; .etmatch disabled; .line 389; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _Error_handler_unexpected_thread; .index 11; .etpreload dont_care; .etmatch disabled; .line 390; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _Error_handler_unexpected_thread; .index 12; .etpreload dont_care; .etmatch disabled; .line 391; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _Error_handler_unexpected_thread; .index 13; .etpreload dont_care; .etmatch disabled; .line 392; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _Error_handler_unexpected_thread; .index 14; .etpreload dont_care; .etmatch disabled; .line 393; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _Error_handler_unexpected_thread; .index 15; .etpreload dont_care; .etmatch disabled; .line 394; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_WINDOW_START_; .index 16; .etpreload dont_care; .etmatch disabled; .line 361; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_WINDOW_END_; .index 17; .etpreload dont_care; .etmatch disabled; .line 371; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_WINDOW_START_; .index 18; .etpreload dont_care; .etmatch disabled; .line 362; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_TRIGGER_; .index 19; .etpreload dont_care; .etmatch disabled; .line 377; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_WINDOW_START_; .index 20; .etpreload dont_care; .etmatch disabled; .line 363; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_WINDOW_END_; .index 21; .etpreload dont_care; .etmatch disabled; .line 372; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_WINDOW_START_; .index 22; .etpreload dont_care; .etmatch disabled; .line 364; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_TRIGGER_; .index 23; .etpreload dont_care; .etmatch disabled; .line 378; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_WINDOW_START_; .index 24; .etpreload dont_care; .etmatch disabled; .line 365; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_WINDOW_END_; .index 25; .etpreload dont_care; .etmatch disabled; .line 373; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_WINDOW_START_; .index 26; .etpreload dont_care; .etmatch disabled; .line 366; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_TRIGGER_; .index 27; .etpreload dont_care; .etmatch disabled; .line 379; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_WINDOW_START_; .index 28; .etpreload dont_care; .etmatch disabled; .line 367; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_WINDOW_END_; .index 29; .etpreload dont_care; .etmatch disabled; .line 374; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_WINDOW_START_; .index 30; .etpreload dont_care; .etmatch disabled; .line 368; .endentry;
+.defentry; .ettype alternate; .etpin output; .etpuclass KNOCK; .ettable KNOCK; .etlabel _KNOCK_AW613E_TRIGGER_; .index 31; .etpreload dont_care; .etmatch disabled; .line 380; .endentry;
+

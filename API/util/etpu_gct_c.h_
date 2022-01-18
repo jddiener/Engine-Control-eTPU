@@ -1,0 +1,87 @@
+/*******************************************************************************
+*
+* Freescale Semiconductor Inc.
+* (c) Copyright 2004-2013 Freescale Semiconductor, Inc.
+* ALL RIGHTS RESERVED.
+*
+****************************************************************************//*!
+*
+* @file    etpu_gct_c.h_
+*
+* @author  Milan Brejl [r54529]
+*
+* @version 1.0
+*
+* @date    06-Jun-2013
+*
+* @brief   This file contains a template of prototypes and definese for
+*          the same name .c file.
+*
+*******************************************************************************/
+
+/*******************************************************************************
+* General Macros
+*******************************************************************************/
+#define FS_ETPU_C_ENTRY_TABLE_ADDR  (((FS_ETPU_C_ENTRY_TABLE)>>11) & 0x1F)
+
+/*******************************************************************************
+* Define Functions to Channels
+*******************************************************************************/
+#define ETPU_<FUNC1>_CHAN         0
+#define ETPU_<FUNC2>_CHAN         31
+
+/*******************************************************************************
+* Define Interrupt Enable, DMA Enable and Output Disable
+*******************************************************************************/
+#define ETPU_CIE_C    0x00000001  /* enable interrupt on channel ETPU_<FUNC1>_CHAN */
+#define ETPU_DTRE_C   0x80000000  /* enable DMA request on channel ETPU_<FUNC2>_CHAN */
+#define ETPU_ODIS_C   0x00000000
+#define ETPU_OPOL_C   0x00000000
+
+/*******************************************************************************
+* Function Prototypes
+*******************************************************************************/
+int32_t my_system_etpu_c_init (void);
+void    my_system_etpu_c_start(void);
+void    fs_etpu_switch_context_c(void);
+void    fs_etpu_switch_context_ab(void);
+
+/*******************************************************************************
+ *
+ * Copyright:
+ *  Freescale Semiconductor, INC. All Rights Reserved.
+ *  You are hereby granted a copyright license to use, modify, and
+ *  distribute the SOFTWARE so long as this entire notice is
+ *  retained without alteration in any modified and/or redistributed
+ *  versions, and that such modified versions are clearly identified
+ *  as such. No licenses are granted by implication, estoppel or
+ *  otherwise under any patents or trademarks of Freescale
+ *  Semiconductor, Inc. This software is provided on an "AS IS"
+ *  basis and without warranty.
+ *
+ *  To the maximum extent permitted by applicable law, Freescale
+ *  Semiconductor DISCLAIMS ALL WARRANTIES WHETHER EXPRESS OR IMPLIED,
+ *  INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A
+ *  PARTICULAR PURPOSE AND ANY WARRANTY AGAINST INFRINGEMENT WITH
+ *  REGARD TO THE SOFTWARE (INCLUDING ANY MODIFIED VERSIONS THEREOF)
+ *  AND ANY ACCOMPANYING WRITTEN MATERIALS.
+ *
+ *  To the maximum extent permitted by applicable law, IN NO EVENT
+ *  SHALL Freescale Semiconductor BE LIABLE FOR ANY DAMAGES WHATSOEVER
+ *  (INCLUDING WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS,
+ *  BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR OTHER
+ *  PECUNIARY LOSS) ARISING OF THE USE OR INABILITY TO USE THE SOFTWARE.
+ *
+ *  Freescale Semiconductor assumes no responsibility for the
+ *  maintenance and support of this software
+ ******************************************************************************/
+/*******************************************************************************
+ *
+ * REVISION HISTORY:
+ *
+ * FILE OWNER: Milan Brejl [r54529]
+ *
+ * Revision 1.0  2013/06/06  r54529
+ * Initial version based on etpu_gct.h_ v1.1.
+ *
+ ******************************************************************************/

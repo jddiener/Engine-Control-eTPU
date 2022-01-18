@@ -1,0 +1,36 @@
+// File 'fuel_init.ETpuCommand'
+
+// this file expects the fuel channel, base address, and TDC ref angle to be passed in 
+// the following defines:
+// FUEL_CHAN
+// FUEL_BASE_ADDR
+// TDC_DEG
+
+//*****************************************************************************
+// eTPU Channel FUEL Configuration 
+//*****************************************************************************
+write_chan_base_addr(       FUEL_CHAN, FUEL_BASE_ADDR );
+write_chan_func(            FUEL_CHAN, FS_ETPU_FUEL_FUNCTION_NUMBER );
+write_chan_entry_condition( FUEL_CHAN, FS_ETPU_FUEL_TABLE_SELECT );
+write_chan_mode(            FUEL_CHAN, FS_ETPU_FUEL_FM0_ACTIVE_HIGH );
+write_chan_hsrr(            FUEL_CHAN, FS_ETPU_FUEL_HSR_INIT );
+write_chan_cpr(             FUEL_CHAN, 1 );
+
+//*****************************************************************************
+// eTPU Channel FUEL Parameters Initialization
+//*****************************************************************************
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_TDC_ANGLE,                  deg2tcr2(TDC_DEG) );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_TDC_ANGLE_ACTUAL,           0 );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_ANGLE_NORMAL_END,           deg2tcr2(    30) );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_ANGLE_STOP,                 deg2tcr2(    10) );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_ANGLE_OFFSET_RECALC,        deg2tcr2(    60) );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_INJECTION_TIME,             usec2tcr1( 10000) );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_COMPENSATION_TIME,          usec2tcr1(  100) );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_INJECTION_TIME_MINIMUM,     usec2tcr1(  200) );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_OFF_TIME_MINIMUM,           usec2tcr1(  200) );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_INJECTION_TIME_APPLIED,     0 );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_INJECTION_TIME_APPLIED_CPU, 0 );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_INJECTION_START_ANGLE,      0 );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_PULSE_START_TIME,           0 );
+write_chan_data24( FUEL_CHAN, FS_ETPU_FUEL_OFFSET_PULSE_END_TIME,             0 );
+write_chan_data8(  FUEL_CHAN, FS_ETPU_FUEL_OFFSET_ERROR,                      0 );

@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<user creator="ASH WARE, Inc." version="2.74.0.0">
+  <build_file name="zzz_1ETpuSim.MtDtBuild" in_build_script_dir="true" />
+  <source_code_search />
+  <!--=======================================================-->
+  <!--======    START TARGET-SPECIFIC SETTINGS        =======-->
+  <target name="eTPU_A">
+    <pgm_model val="1" />
+    <etec_dir val="Development" />
+    <internal_build val="true" />
+    <link_file name="etpu_set.elf" lst_choice="3" lst_dir="lst\" />
+    <primary_script_file name="..\script\Script.ETpuCommand" />
+    <source_file name="..\src\etpuc_cam.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_crank.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_crank_emul.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_fuel.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_inj.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_knock.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_set.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_spark.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_tg.c" tool="ETEC_CC" />
+  </target>
+  <!--======    END TARGET-SPECIFIC SETTINGS          =======-->
+  <!--=======================================================-->
+</user>

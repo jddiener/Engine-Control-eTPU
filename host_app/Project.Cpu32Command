@@ -1,0 +1,32 @@
+// Primary script file  'SPI_driver.Cpu32Command'
+
+// set clocks
+
+// Set the host clock to 250 Mhz (4 ns/clock -->1e6 FemtoSeconds/clock)
+set_clk_period(4000000);
+
+// Set the eTPU clock to 100 Mhz (clk_period in femtoseconds)
+eTPU_A.set_clk_period(10000000);
+
+
+// configure pin connections
+eTPU_A.place_buffer(32 + 1, 0); // cam
+eTPU_A.place_buffer(32 + 3, 2); // crank
+
+// enable interrupt handlers on host, for interrupts from eTPU
+enable_target_interrupts("eTPU_A");
+
+
+#ifdef _ASH_WARE_AUTO_RUN_
+
+write_val_int("g_testbed_flag", 1);
+at_time(10000);
+verify_val_int("g_complete_flag", "==", 1);
+exit();
+
+#else
+
+at_time(2000000);
+print("All tests are done!!");
+
+#endif // _ASH_WARE_AUTO_RUN_

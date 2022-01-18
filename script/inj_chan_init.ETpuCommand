@@ -1,0 +1,50 @@
+// File 'inj_chan_init.ETpuCommand'
+
+// this file expects the inj channel, base address, TDC ref angle, inj table base address,
+// and inj bank channels to be passed in the following defines:
+// INJ_CHAN
+// INJ_BASE_ADDR
+// TDC_DEG
+// INJ_TAB_BASE_ADDR
+// INJ_BANK_1_CHAN
+// INJ_BANK_2_CHAN [optional]
+// INJ_BANK_3_CHAN [optional]
+
+//*****************************************************************************
+// eTPU Channel INJ Configuration 
+//*****************************************************************************
+write_chan_base_addr(       INJ_CHAN, INJ_BASE_ADDR );
+write_chan_func(            INJ_CHAN, FS_ETPU_INJ_FUNCTION_NUMBER );
+write_chan_entry_condition( INJ_CHAN, FS_ETPU_INJ_TABLE_SELECT );
+write_chan_mode(            INJ_CHAN, FS_ETPU_INJ_FM0_ACTIVE_HIGH + FS_ETPU_INJ_FM1_CHANNEL_INJ );
+write_chan_hsrr(            INJ_CHAN, FS_ETPU_INJ_HSR_INIT );
+write_chan_cpr(             INJ_CHAN, 1 );
+  
+//*****************************************************************************
+// eTPU Channel INJ Parameters Initialization
+//*****************************************************************************
+#if defined(INJ_BANK_3_CHAN)
+#define bank_chans ((INJ_BANK_1_CHAN << 16) + (INJ_BANK_2_CHAN << 8) + INJ_BANK_3_CHAN)
+#define bank_chans_mask ((1 << INJ_BANK_1_CHAN) | (1 << INJ_BANK_2_CHAN) | (1 << INJ_BANK_3_CHAN))
+#elif defined (INJ_BANK_2_CHAN)
+#define bank_chans ((INJ_BANK_1_CHAN << 8) + INJ_BANK_2_CHAN)
+#define bank_chans_mask ((1 << INJ_BANK_1_CHAN) | (1 << INJ_BANK_2_CHAN))
+#else
+#define bank_chans INJ_BANK_1_CHAN
+#define bank_chans_mask (1 << INJ_BANK_1_CHAN)
+#endif
+write_chan_data24( INJ_CHAN, FS_ETPU_INJ_OFFSET_BANK_CHANS,          bank_chans );
+write_chan_data24( INJ_CHAN, FS_ETPU_INJ_OFFSET_P_INJECTION_FIRST,   INJ_TAB_BASE_ADDR );
+write_chan_data24( INJ_CHAN, FS_ETPU_INJ_OFFSET_P_INJECTION,         0 );
+write_chan_data24( INJ_CHAN, FS_ETPU_INJ_OFFSET_P_PHASE,             0 );
+write_chan_data24( INJ_CHAN, FS_ETPU_INJ_OFFSET_ANGLE_IRQ,           deg2tcr2(  60) );
+write_chan_data24( INJ_CHAN, FS_ETPU_INJ_OFFSET_ANGLE_STOP,          deg2tcr2( -30) );
+write_chan_data24( INJ_CHAN, FS_ETPU_INJ_OFFSET_TDC_ANGLE,           deg2tcr2( TDC_DEG) );
+write_chan_data24( INJ_CHAN, FS_ETPU_INJ_OFFSET_TDC_ANGLE_ACTUAL,    0 );
+write_chan_data8(  INJ_CHAN, FS_ETPU_INJ_OFFSET_INJECTION_COUNT,     3 );
+write_chan_data8(  INJ_CHAN, FS_ETPU_INJ_OFFSET_INJECTION_COUNTER,   0 );
+write_chan_data8(  INJ_CHAN, FS_ETPU_INJ_OFFSET_PHASE_COUNTER,       0 );
+write_chan_data8(  INJ_CHAN, FS_ETPU_INJ_OFFSET_BANK_CHANS_COUNT,    2 );
+write_chan_data8(  INJ_CHAN, FS_ETPU_INJ_OFFSET_ERROR,               0 );
+write_chan_data8(  INJ_CHAN, FS_ETPU_INJ_OFFSET_INACTIVE_POLARITIES, 0 );
+write_chan_data32( INJ_CHAN, FS_ETPU_INJ_OFFSET_BANK_CHANS_MASK,     bank_chans_mask );

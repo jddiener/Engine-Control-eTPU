@@ -1,0 +1,45 @@
+// File 'spark_init.ETpuCommand'
+
+// this file expects the spark channel, base address, and TDC ref angle to be passed in 
+// the following defines:
+// SPARK_CHAN
+// SPARK_BASE_ADDR
+// TDC_DEG
+
+//*****************************************************************************
+// eTPU Channel SPARK Configuration 
+//*****************************************************************************
+write_chan_base_addr(       SPARK_CHAN, SPARK_BASE_ADDR );
+write_chan_func(            SPARK_CHAN, FS_ETPU_SPARK_FUNCTION_NUMBER );
+write_chan_entry_condition( SPARK_CHAN, FS_ETPU_SPARK_TABLE_SELECT );
+write_chan_mode(            SPARK_CHAN, FS_ETPU_SPARK_FM0_ACTIVE_HIGH );
+write_chan_hsrr(            SPARK_CHAN, FS_ETPU_SPARK_HSR_INIT );
+write_chan_cpr(             SPARK_CHAN, 1 );
+
+//*****************************************************************************
+// eTPU Channel SPARK Parameters Initialization
+//*****************************************************************************
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_TDC_ANGLE,                  deg2tcr2(TDC_DEG) );
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_TDC_ANGLE_ACTUAL,           0 );
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_P_SINGLE_SPARK_FIRST,       SPARK_BASE_ADDR + FS_ETPU_SPARK_NUM_PARMS );
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_P_SINGLE_SPARK,             0 );
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_ANGLE_OFFSET_RECALC,        deg2tcr2(10) );
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_DWELL_TIME_MIN,             usec2tcr1(  800) );
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_DWELL_TIME_MAX,             usec2tcr1( 1200) );
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_MULTI_ON_TIME,              usec2tcr1(  100) );
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_MULTI_OFF_TIME,             usec2tcr1(  100) );
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_PULSE_START_TIME,           0 );
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_DWELL_TIME_APPLIED,         0 );
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_DWELL_TIME,                 0 );
+write_chan_data24( SPARK_CHAN, FS_ETPU_SPARK_OFFSET_END_ANGLE,                  0 );
+write_chan_data8(  SPARK_CHAN, FS_ETPU_SPARK_OFFSET_SPARK_COUNT,                1 );
+write_chan_data8(  SPARK_CHAN, FS_ETPU_SPARK_OFFSET_SPARK_COUNTER,              0 );
+write_chan_data8(  SPARK_CHAN, FS_ETPU_SPARK_OFFSET_MULTI_PULSE_COUNT,          0 );
+write_chan_data8(  SPARK_CHAN, FS_ETPU_SPARK_OFFSET_MULTI_PULSE_COUNTER,        0 );
+write_chan_data8(  SPARK_CHAN, FS_ETPU_SPARK_OFFSET_STATE,                      0 );
+write_chan_data8(  SPARK_CHAN, FS_ETPU_SPARK_OFFSET_ERROR,                      0 );
+write_chan_data8(  SPARK_CHAN, FS_ETPU_SPARK_OFFSET_GENERATION_DISABLE,         FS_ETPU_SPARK_GENERATION_ALLOWED );
+
+write_global_data24 (SPARK_BASE_ADDR + FS_ETPU_SPARK_NUM_PARMS + 0 * FS_ETPU_SINGLE_SPARK_STRUCT_SIZE + FS_ETPU_SINGLE_SPARK_OFFSET_END_ANGLE,          deg2tcr2(  0) );
+write_global_data24 (SPARK_BASE_ADDR + FS_ETPU_SPARK_NUM_PARMS + 0 * FS_ETPU_SINGLE_SPARK_STRUCT_SIZE + FS_ETPU_SINGLE_SPARK_OFFSET_DWELL_TIME,         usec2tcr1( 1000) );
+write_global_data8  (SPARK_BASE_ADDR + FS_ETPU_SPARK_NUM_PARMS + 0 * FS_ETPU_SINGLE_SPARK_STRUCT_SIZE + FS_ETPU_SINGLE_SPARK_OFFSET_MULTI_PULSE_COUNT,  3 );

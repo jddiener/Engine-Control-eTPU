@@ -1,0 +1,231 @@
+/*******************************************************************************
+*
+* Freescale Semiconductor Inc.
+* (c) Copyright 2004-2012 Freescale Semiconductor, Inc.
+* ALL RIGHTS RESERVED.
+*
+****************************************************************************//*!
+*
+* @file    etpu_gct.c_
+*
+* @author  Milan Brejl [r54529]
+*
+* @version 1.1
+*
+* @date    10-Apr-2012
+*
+* @brief   This file contains a template of eTPU module initialization.
+*          There are 2 functions to be used by the application:
+*          - my_system_etpu_init - initialize eTPU global and channel setting
+*          - my_system_etpu_start - run the eTPU
+*
+*******************************************************************************/
+
+/*******************************************************************************
+* Includes
+*******************************************************************************/
+#include "etpu_gct.h"      /* private header file */
+#include "etpu_util.h"     /* General C Functions for the eTPU */
+#include "etpu_set.h"      /* eTPU function set code binary image */
+#include "etpu_<func1>.h"  /* eTPU function <func1> API */
+#include "etpu_<func2>.h"  /* eTPU function <func2> API */
+
+/*******************************************************************************
+* Global variables
+*******************************************************************************/
+/** @brief   Pointer to the first free parameter in eTPU DATA RAM */
+uint32_t *fs_free_param;
+
+/*******************************************************************************
+ * Global eTPU settings - etpu_config structure
+ ******************************************************************************/
+/** @brief   Structure handling configuration of all global settings */
+struct etpu_config_t my_etpu_config =
+{
+  /* etpu_config.mcr - Module Configuration Register */
+  FS_ETPU_GLOBAL_TIMEBASE_DISABLE  /* keep time-bases stopped during intialization (GTBE=0) */
+  | FS_ETPU_MISC_DISABLE, /* SCM operation disabled (SCMMISEN=0) */
+
+  /* etpu_config.misc - MISC Compare Register*/
+  FS_ETPU_MISC, /* MISC compare value from etpu_set.h */
+
+  /* etpu_config.ecr_a - Engine A Configuration Register */
+  FS_ETPU_ENTRY_TABLE_ADDR /* entry table base address = shifted FS_ETPU_ENTRY_TABLE from etpu_set.h */
+  | FS_ETPU_CHAN_FILTER_2SAMPLE /* channel filter mode = three-sample mode (CDFC=0) */
+  | FS_ETPU_FCSS_DIV2 /* filter clock source selection = div 2 (FSCC=0) */
+  | FS_ETPU_FILTER_CLOCK_DIV2 /* filter prescaler clock control = div 2 (FPSCK=0) */
+  | FS_ETPU_PRIORITY_PASSING_ENABLE /* scheduler priority passing is enabled (SPPDIS=0) */
+  | FS_ETPU_ENGINE_ENABLE, /* engine is enabled (MDIS=0) */
+
+  /* etpu_config.tbcr_a - Time Base Configuration Register A */
+  FS_ETPU_TCRCLK_MODE_2SAMPLE /* TCRCLK signal filter control mode = two-sample mode (TCRCF=0x) */
+  | FS_ETPU_TCRCLK_INPUT_DIV2CLOCK /* TCRCLK signal filter control clock = div 2 (TCRCF=x0) */
+  | FS_ETPU_TCR1CS_DIV2 /* TCR1 clock source = div 2 (TCR1CS=0)*/
+  | FS_ETPU_TCR1CTL_DIV2 /* TCR1 source = div 2 (TCR1CTL=2) */
+  | FS_ETPU_TCR1_PRESCALER(1) /* TCR1 prescaler = 1 (TCR1P=0) */
+  | FS_ETPU_TCR2CTL_DIV8 /* TCR2 source = etpuclk div 8 (TCR2CTL=4) */
+  | FS_ETPU_TCR2_PRESCALER(1) /* TCR2 prescaler = 1 (TCR2P=0) */
+  | FS_ETPU_ANGLE_MODE_DISABLE, /* TCR2 angle mode is disabled (AM=0) */
+
+  /* etpu_config.stacr_a - Shared Time And Angle Count Register A */
+  FS_ETPU_TCR1_STAC_DISABLE /* TCR1 on STAC bus = disabled (REN1=0) */
+  | FS_ETPU_TCR1_STAC_CLIENT /* TCR1 resource control = client (RSC1=0) */
+  | FS_ETPU_TCR1_STAC_SRVSLOT(0) /* TCR1 server slot = 0 (SRV1=0) */
+  | FS_ETPU_TCR2_STAC_DISABLE /* TCR2 on STAC bus = disabled (REN2=0) */
+  | FS_ETPU_TCR1_STAC_CLIENT /* TCR2 resource control = client (RSC2=0) */
+  | FS_ETPU_TCR2_STAC_SRVSLOT(0), /* TCR2 server slot = 0 (SRV2=0) */
+
+  /* etpu_config.ecr_b - Engine B Configuration Register */
+  FS_ETPU_ENTRY_TABLE_ADDR /* entry table base address = shifted FS_ETPU_ENTRY_TABLE from etpu_set.h */
+  | FS_ETPU_CHAN_FILTER_2SAMPLE /* channel filter mode = three-sample mode (CDFC=0) */
+  | FS_ETPU_FCSS_DIV2 /* filter clock source selection = div 2 (FSCC=0) */
+  | FS_ETPU_FILTER_CLOCK_DIV2 /* filter prescaler clock control = div 2 (FPSCK=0) */
+  | FS_ETPU_PRIORITY_PASSING_ENABLE /* scheduler priority passing is enabled (SPPDIS=0) */
+  | FS_ETPU_ENGINE_ENABLE, /* engine is enabled (MDIS=0) */
+
+  /* etpu_config.tbcr_b - Time Base Configuration Register B */
+  FS_ETPU_TCRCLK_MODE_2SAMPLE /* TCRCLK signal filter control mode = two-sample mode (TCRCF=0x) */
+  | FS_ETPU_TCRCLK_INPUT_DIV2CLOCK /* TCRCLK signal filter control clock = div 2 (TCRCF=x0) */
+  | FS_ETPU_TCR1CS_DIV2 /* TCR1 clock source = div 2 (TCR1CS=0)*/
+  | FS_ETPU_TCR1CTL_DIV2 /* TCR1 source = div 2 (TCR1CTL=2) */
+  | FS_ETPU_TCR1_PRESCALER(1) /* TCR1 prescaler = 1 (TCR1P=0) */
+  | FS_ETPU_TCR2CTL_DIV8 /* TCR2 source = etpuclk div 8 (TCR2CTL=4) */
+  | FS_ETPU_TCR2_PRESCALER(1) /* TCR2 prescaler = 1 (TCR2P=0) */
+  | FS_ETPU_ANGLE_MODE_DISABLE, /* TCR2 angle mode is disabled (AM=0) */
+
+  /* etpu_config.stacr_b - Shared Time And Angle Count Register B */
+  FS_ETPU_TCR1_STAC_DISABLE /* TCR1 on STAC bus = disabled (REN1=0) */
+  | FS_ETPU_TCR1_STAC_CLIENT /* TCR1 resource control = client (RSC1=0) */
+  | FS_ETPU_TCR1_STAC_SRVSLOT(0) /* TCR1 server slot = 0 (SRV1=0) */
+  | FS_ETPU_TCR2_STAC_DISABLE /* TCR2 on STAC bus = disabled (REN2=0) */
+  | FS_ETPU_TCR1_STAC_CLIENT /* TCR2 resource control = client (RSC2=0) */
+  | FS_ETPU_TCR2_STAC_SRVSLOT(0), /* TCR2 server slot = 0 (SRV2=0) */
+
+  /* etpu_config.wdtr_a - Watchdog Timer Register A(eTPU2 only) */
+  FS_ETPU_WDM_DISABLED /* watchdog mode = disabled */
+  | FS_ETPU_WDTR_WDCNT(0), /* watchdog count = 0 */
+
+  /* etpu_config.wdtr_b - Watchdog Timer Register B (eTPU2 only) */
+  FS_ETPU_WDM_DISABLED /* watchdog mode = disabled */
+  | FS_ETPU_WDTR_WDCNT(0) /* watchdog count = 0 */
+};
+
+/*******************************************************************************
+* FUNCTION: my_system_etpu_init
+****************************************************************************//*!
+* @brief   This function initialize the eTPU module:
+*          -# Initialize global setting using fs_etpu_init function
+*             and the my_etpu_config structure
+*          -# On eTPU2, initialize the additional eTPU2 setting using
+*             fs_etpu2_init function
+*          -# Initialize channel setting using channel function APIs
+*
+* @return  Zero or an error code is returned.
+*******************************************************************************/
+int32_t my_system_etpu_init(void)
+{
+  int32_t err_code;
+
+  /* Initialization of eTPU global settings */
+  err_code = fs_etpu_init(
+    my_etpu_config,
+    (uint32_t *)etpu_code, sizeof(etpu_code),
+    (uint32_t *)etpu_globals, sizeof(etpu_globals));
+  if(err_code != 0) return(err_code);
+
+#ifdef FS_ETPU_ARCHITECTURE
+ #if FS_ETPU_ARCHITECTURE == ETPU2
+  /* Initialization of additional eTPU2-only global settings */
+  err_code = fs_etpu2_init(
+    my_etpu_config,
+  #ifdef FS_ETPU_ENGINE_MEM_SIZE
+    FS_ETPU_ENGINE_MEM_SIZE);
+  #else
+    0);
+  #endif
+  if(err_code != 0) return(err_code);
+ #endif
+#endif
+
+  /* Initialization of eTPU channel settings */
+  err_code = fs_etpu_<func1>_init( /* initialize eTPU function using it's API */
+    ETPU_<FUNC1>_CHAN,             /* assign the function to a channel */
+    ...);                          /* set other API initialization parameters */
+  if(err_code != 0) return(err_code + (ETPU_<FUNC1>_CHAN<<16));
+
+  err_code = fs_etpu_<func2>_init(
+    ETPU_<FUNC2>_CHAN,
+    ...);
+  if(err_code != 0) return(err_code + (ETPU_<FUNC2>_CHAN<<16));
+
+  ...
+
+  return(0);
+}
+
+/*******************************************************************************
+* FUNCTION: my_system_etpu_start
+****************************************************************************//*!
+* @brief   This function enables channel interrupts, DMA requests and "output
+*          disable" feature on selected channels and starts TCR time bases using
+*          Global Timebase Enable (GTBE) bit.
+* @warning This function should be called after all device modules, including
+*          the interrupt and DMA controller, are configured.
+*******************************************************************************/
+void my_system_etpu_start(void)
+{
+  /* Initialization of Interrupt Enable, DMA Enable
+     and Output Disable channel options */
+  fs_etpu_set_interrupt_mask_a(ETPU_CIE_A);
+  fs_etpu_set_interrupt_mask_b(ETPU_CIE_B);
+  fs_etpu_set_dma_mask_a(ETPU_DTRE_A);
+  fs_etpu_set_dma_mask_b(ETPU_DTRE_B);
+  fs_etpu_set_output_disable_mask_a(ETPU_ODIS_A, ETPU_OPOL_A);
+  fs_etpu_set_output_disable_mask_b(ETPU_ODIS_B, ETPU_OPOL_B);
+
+  /* Synchronous start of all TCR time bases */
+  fs_timer_start();
+}
+
+/*******************************************************************************
+ *
+ * Copyright:
+ *  Freescale Semiconductor, INC. All Rights Reserved.
+ *  You are hereby granted a copyright license to use, modify, and
+ *  distribute the SOFTWARE so long as this entire notice is
+ *  retained without alteration in any modified and/or redistributed
+ *  versions, and that such modified versions are clearly identified
+ *  as such. No licenses are granted by implication, estoppel or
+ *  otherwise under any patents or trademarks of Freescale
+ *  Semiconductor, Inc. This software is provided on an "AS IS"
+ *  basis and without warranty.
+ *
+ *  To the maximum extent permitted by applicable law, Freescale
+ *  Semiconductor DISCLAIMS ALL WARRANTIES WHETHER EXPRESS OR IMPLIED,
+ *  INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A
+ *  PARTICULAR PURPOSE AND ANY WARRANTY AGAINST INFRINGEMENT WITH
+ *  REGARD TO THE SOFTWARE (INCLUDING ANY MODIFIED VERSIONS THEREOF)
+ *  AND ANY ACCOMPANYING WRITTEN MATERIALS.
+ *
+ *  To the maximum extent permitted by applicable law, IN NO EVENT
+ *  SHALL Freescale Semiconductor BE LIABLE FOR ANY DAMAGES WHATSOEVER
+ *  (INCLUDING WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS,
+ *  BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR OTHER
+ *  PECUNIARY LOSS) ARISING OF THE USE OR INABILITY TO USE THE SOFTWARE.
+ *
+ *  Freescale Semiconductor assumes no responsibility for the
+ *  maintenance and support of this software
+ ******************************************************************************/
+/*******************************************************************************
+ *
+ * REVISION HISTORY:
+ *
+ * FILE OWNER: Milan Brejl [r54529]
+ *
+ * Revision 1.1  2012/04/10  r54529
+ * Usage of fs_etpu2_init with autogenerated macro FS_ETPU_ENGINE_MEM_SIZE.
+ *  
+ * Revision 1.0  2012/02/22  r54529
+ * Initial version based on eTPU Graphical Configuration Tool (GCT) output.
+ *
+ ******************************************************************************/

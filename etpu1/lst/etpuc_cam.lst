@@ -1,0 +1,512 @@
+ETEC Tools V3.00A                  ASH WARE Inc.                  (C) 2015-2020
+    /*******************************************************************************
+    * This file has been modified by ASH WARE Inc. as allowed per the original 
+    * license (see bottom of file), to add features and fix issues.
+    *******************************************************************************/
+    
+    /*******************************************************************************
+    *
+    *  FREESCALE SEMICONDUCTOR INC. 2012-2014
+    *  ALL RIGHTS RESERVED
+    *  COPYRIGHT (c)
+    *
+    ********************************************************************************
+    *
+    *  FILE NAME:  etpuc_cam.c
+    *
+    *  DESCRIPTION:
+    *    This eTPU function logs TCR2 values (engine angles) captured on input
+    *    transitions into an array. This log can be used e.g. to recognize between  
+    *    engine half-cycle 0-360 or 360-720. 
+    *
+    *******************************************************************************/
+    
+    /*******************************************************************************
+    *  Includes
+    *******************************************************************************/
+    #include <etpu_std.h>
+    #include "etpuc_cam.h"
+    #include "etpuc_crank.h"
+    #include "etpuc_set.h"
+    
+    /*******************************************************************************
+    *  eTPU Function Parameters:
+    *
+    *   log          - array of input transitions captured. Each log consist of
+    *                  - transition polarity (0-falling, 1-rising) in upper 8 bits
+    *                  - transition TCR2 angle in lower 24 bits.
+    *   log_size     - Size of the cam_log array - number of 32-bit words allocated
+    *                  in eTPU DATA RAM for cam_log.
+    *   log_idx      - index to the cam_log array where the next log will be written
+    *                  to. It is reset to zero on a link (from Crank).
+    *   log_count    - number of logs during the last log cycle (cam_log_idx is
+    *                  copied to cam_log_count before resetting).   
+    *   error        - Error status bits. Any time a bit is set, the channel IRQ is
+    *                  raised. Written by eTPU, cleared by CPU.
+    *
+    ********************************************************************************
+    *
+    *  Channel Flag usage
+    *    Flag0 is not used.
+    *    Flag1 is not used.
+    *
+    *******************************************************************************/
+    
+    
+    /*******************************************************************************
+    *  eTPU Function
+    *******************************************************************************/
+    
+    /**************************************************************************
+    * THREAD NAME: INIT
+    * DESCRIPTION: Initialize the channel to run the CAM function.
+    **************************************************************************/
+    _eTPU_thread CAM::INIT(_eTPU_matches_disabled)
+    {
+    	/* Stop the channel */
+    	/* Disable event handling */
+    	channel.MTD = MTD_DISABLE;
+0800: 0xFB77FEFB   chan  clear TransitionDetectionLatches, clear MatchEnableLatches, DisableMatchTransitionServicing;;
+    	/* Disable match detection */
+    	channel.MRLE = 0;
+    	/* Reset all latches */
+    	channel.TDL = TDL_CLEAR;
+    	channel.LSR = LSR_CLEAR;
+    	channel.MRLA = MRL_CLEAR;
+    	channel.MRLB = MRL_CLEAR;
+    
+    	/* Initialize the channel */
+    	/* Set channel mode: single match single transition */
+    	channel.PDCM = PDCM_SM_ST;
+    	/* Time base selection */
+    	channel.TBSA = TBS_M1C2GE;
+    	channel.TBSB = TBS_M1C2GE;
+    	/* Input pin action control */
+    	if(cc.FM1 == CAM_FM1_LOG_RISING)
+0804: 0xF3B04107   seq  if FunctionMode1==false then goto addr_0x820, no_flush;;
+0808: 0x4FF226B9   chan  clear MatchRecognitionLatchA, clear MatchRecognitionLatchB, ActionUnitA: tcr1 >= match, capture tcr2, ActionUnitB: tcr1 >= match, capture tcr2,
+    :                    clear LinkServiceRequest, mode = single match single transition;;
+    	{
+    		if(cc.FM0 == CAM_FM0_LOG_FALLING)
+080C: 0xF3D040C7   seq  if FunctionMode0==false then goto addr_0x818, flush;;
+    		{
+    			channel.IPACA = IPAC_EITHER;
+    			channel.IPACB = IPAC_EITHER;
+    		}
+0810: 0xF7F04187   seq  goto addr_0x830, no_flush;;
+0814: 0x5B7FFFFF   chan  detectA = any input pin edge, detectB = any input pin edge;;
+    		else
+    		{
+    			channel.IPACA = IPAC_RISING;
+    			channel.IPACB = IPAC_RISING;
+    		}
+    	}
+0818: 0xF7F04187   seq  goto addr_0x830, no_flush;;
+081C: 0x593FFFFF   chan  detectA = rising input pin edge, detectB = rising input pin edge;;
+    	else
+    	{
+    		if(cc.FM0 == CAM_FM0_LOG_FALLING)
+0820: 0xF3D04167   seq  if FunctionMode0==false then goto addr_0x82C, flush;;
+    		{
+    			channel.IPACA = IPAC_FALLING;
+    			channel.IPACB = IPAC_FALLING;
+    		}
+0824: 0xF7F04187   seq  goto addr_0x830, no_flush;;
+0828: 0x5A5FFFFF   chan  detectA = falling input pin edge, detectB = falling input pin edge;;
+    		else
+    		{
+    			channel.IPACA = IPAC_NO_DETECT;
+082C: 0x581FFFFF   chan  detectA = off, detectB = off;;
+    			channel.IPACB = IPAC_NO_DETECT;
+    		}
+    	}
+    	/* Output pin action control */
+    	channel.OPACA = OPAC_NO_CHANGE;
+0830: 0x481FFFFF   chan  FutureOutputPin no change on matchA, FutureOutputPin no change on matchB;;
+    	channel.OPACB = OPAC_NO_CHANGE;
+    
+    	/* Enable event handling */
+    	channel.MTD = MTD_ENABLE;	
+0834: 0xF73FFEFB   chan  EnableMatchTransitionServicing;
+    :              seq   end;;
+    }
+    
+    /**************************************************************************
+    * THREAD NAME: RESET
+    * DESCRIPTION: Reset the log. Test if count == 0.
+    *              The link from Cam is expected once per cycle.	
+    **************************************************************************/
+    _eTPU_thread CAM::RESET(_eTPU_matches_enabled)
+    {
+    	log_count = log_idx;
+0838: 0xBFFB7A82   alu    p = diob+0x0, SampleFlags;
+    :              ram   *((channel int24 *) 0x9) = p_23_0;;
+    	log_idx = 0;
+083C: 0xBFFFFB01   ram   *((channel int24 *) 0x5) =  0;;
+    	channel.LSR = LSR_CLEAR;
+    	
+    	if(log_count == 0)
+0840: 0xF0F04287   seq  if z==false then goto addr_0x850, no_flush;;
+0844: 0x4FFFF7FF   chan  clear LinkServiceRequest;;
+    	{
+    	  /* there was zero transitions logged from the previous reset */
+    	  error |= CAM_ERROR_ZERO_TRANS;
+0848: 0x0C02ABA2   alu    p_31_24 = p_31_24 | 0x1;;
+084C: 0xCFFF3980   ram   *((channel int8 *) 0x0) = p_31_24;
+    :              chan  set SvcdChan ChannelIntr;;
+    	  channel.CIRC = CIRC_INT_FROM_SERVICED;
+    	}
+    }
+0850: 0x0FFFFFFF   seq   end;;
+    
+    /**************************************************************************
+    * THREAD NAME: LOG A SINGLE TRANSITION
+    * DESCRIPTION: Log a transition into the log array.
+    **************************************************************************/
+    _eTPU_thread CAM::LOG_1_TRANS(_eTPU_matches_enabled)
+    {
+      struct CAM_LOG *ptr;
+    	
+    	channel.TDL = TDL_CLEAR;			
+0854: 0x7C0BFFFB   alu    nil = diob-p, SampleFlags;
+    :              chan  clear TransitionDetectionLatches;;
+    	if(log_idx < log_size)
+0858: 0xF0904427   seq  if cFlag==false then goto addr_0x884, flush;;
+    	{
+    		ptr = log + log_idx++;
+085C: 0x000B0419   alu    a = diob+0x0;;
+0860: 0xBDFB4F81   alu    diob = diob+0x1;
+    :              ram   *((channel int24 *) 0x5) = diob;;
+0864: 0x1C090B8A   alu    a = a << 2;;
+0868: 0xBFEFFF83   ram   diob = *((channel int24 *) 0xD);;
+086C: 0x1F3B4FFF   alu    diob = diob+a;;
+    		ptr->trans = CAM_FALLING;
+    		if(channel.PSS == 1)
+0870: 0xF4304407   seq  if SampledInputPin==false then goto addr_0x880, no_flush;;
+0874: 0xFFFFF959   ram   *((int8 *) diob) =  0;;
+    		{
+    			ptr->trans = CAM_RISING;
+0878: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+087C: 0xFFFFF9D9   ram   *((int8 *) diob) = p_31_24;;
+    		}
+    		ptr->angle = erta;
+0880: 0x0FFE7BDF   alu    p = ertA+0x0;
+    :              ram   *((int24 *) diob) = p_23_0;
+    :              seq   end;;
+    	}
+    	else
+    	{
+    		/* there is no more space in the log_array */
+    		error |= CAM_ERROR_LOG_OVERFLOW;
+0884: 0x0C02ABC2   alu    p_31_24 = p_31_24 | 0x2;;
+    		channel.CIRC = CIRC_INT_FROM_SERVICED;
+0888: 0xC7FF3980   ram   *((channel int8 *) 0x0) = p_31_24;
+    :              chan  set SvcdChan ChannelIntr;
+    :              seq   end;;
+    	}
+    }
+    
+    /**************************************************************************
+    * THREAD NAME: LOG TWO TRANSITIONS
+    * DESCRIPTION: Log two captured transitions into the log array.
+    *              This may be executed only if the first transition was not
+    *              serviced yet.		
+    **************************************************************************/
+    _eTPU_thread CAM::LOG_2_TRANS(_eTPU_matches_enabled)
+    {
+      struct CAM_LOG *ptr;
+    
+    	channel.TDL = TDL_CLEAR;			
+088C: 0x7C0BFFFB   alu    nil = diob-p, SampleFlags;
+    :              chan  clear TransitionDetectionLatches;;
+    	if(log_idx < log_size)
+0890: 0xF09047C7   seq  if cFlag==false then goto addr_0x8F8, flush;;
+    	{
+    		ptr = log + log_idx++;
+0894: 0x000B0419   alu    a = diob+0x0;;
+0898: 0xBDFB4F81   alu    diob = diob+0x1;
+    :              ram   *((channel int24 *) 0x5) = diob;;
+089C: 0x1C090B8A   alu    a = a << 2;;
+08A0: 0xBFEFFF83   ram   diob = *((channel int24 *) 0xD);;
+08A4: 0x1F3B1FFF   alu    sr = diob+a;;
+    	  ptr->trans = CAM_FALLING;
+08A8: 0x000A4419   alu    diob = sr+0x0;;
+    #if defined(__TARGET_ETPU1__)
+    	  if(channel.PSS == 1)
+08AC: 0xF43045E7   seq  if SampledInputPin==false then goto addr_0x8BC, no_flush;;
+08B0: 0xFFFFF959   ram   *((int8 *) diob) =  0;;
+    #else
+    	  if(channel.PRSS == 1)
+    #endif
+    	  {
+    		  ptr->trans = CAM_RISING;
+08B4: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+08B8: 0xFFFFF9D9   ram   *((int8 *) diob) = p_31_24;;
+    		}
+    	  ptr->angle = erta;
+08BC: 0x1FFE7BDF   alu    p = ertA+0x0;
+    :              ram   *((int24 *) diob) = p_23_0;;
+    
+    		if(log_idx < log_size)
+08C0: 0xBFEFFF81   ram   diob = *((channel int24 *) 0x5);;
+08C4: 0xBFEFFB80   ram   p_23_0 = *((channel int24 *) 0x1);;
+08C8: 0x1C1BFEFF   alu    nil = diob-p, SampleFlags;;
+08CC: 0xF0904767   seq  if cFlag==false then goto addr_0x8EC, flush;;
+    		{
+    			log_idx++;
+08D0: 0xBDFB4F81   alu    diob = diob+0x1;
+    :              ram   *((channel int24 *) 0x5) = diob;;
+    			ptr++;
+08D4: 0x001A4419   alu    diob = sr+0x4;;
+    		  ptr->trans = CAM_FALLING;
+    		  if(channel.PSS == 1)
+08D8: 0xF4304747   seq  if SampledInputPin==false then goto addr_0x8E8, no_flush;;
+08DC: 0xFFFFF959   ram   *((int8 *) diob) =  0;;
+    		  {
+    			  ptr->trans = CAM_RISING;
+08E0: 0x000FA439   alu    p_31_24 = ((u24) 0)+0x1;;
+08E4: 0xFFFFF9D9   ram   *((int8 *) diob) = p_31_24;;
+    			}
+    		  ptr->angle = ertb;
+08E8: 0x0FF37BDF   alu    p = ertB+0x0;
+    :              ram   *((int24 *) diob) = p_23_0;
+    :              seq   end;;
+    		}
+    		else
+    		{
+    		  /* there is no more space in the log_array */
+    		  error |= CAM_ERROR_LOG_OVERFLOW;
+08EC: 0xCFEF3980   ram   p_31_24 = *((channel int8 *) 0x0);
+    :              chan  set SvcdChan ChannelIntr;;
+08F0: 0x0C02ABC2   alu    p_31_24 = p_31_24 | 0x2;;
+08F4: 0xC7FFF980   ram   *((channel int8 *) 0x0) = p_31_24;
+    :              seq   end;;
+    		  channel.CIRC = CIRC_INT_FROM_SERVICED;
+    		}
+    	}
+    	else
+    	{
+    	  /* there is no more space in the log_array */
+    	  error |= CAM_ERROR_LOG_OVERFLOW;
+08F8: 0x0C02ABC2   alu    p_31_24 = p_31_24 | 0x2;;
+    	  channel.CIRC = CIRC_INT_FROM_SERVICED;
+08FC: 0xC7FF3980   ram   *((channel int8 *) 0x0) = p_31_24;
+    :              chan  set SvcdChan ChannelIntr;
+    :              seq   end;;
+    	}
+    }
+    
+    
+    DEFINE_ENTRY_TABLE(CAM, CAM, standard, inputpin, autocfsr)
+    {
+        //           HSR LSR M1 M2 PIN F0 F1 vector
+        ETPU_VECTOR1(7,  x,  x, x, x,  x, x, INIT),
+0012: 0x0200       Std Entry 9, Addr 0x800, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b111  Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==X  ChanFlag1==X  ChanFlag0==X
+    
+        //           HSR LSR M1 M2 PIN F0 F1 vector
+        ETPU_VECTOR1(1,  x,  x, x, 0,  0, x, RESET),
+0000: 0x420E       Std Entry 0, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b001  Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==0  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(1,  x,  x, x, 0,  1, x, RESET),
+0002: 0x420E       Std Entry 1, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b001  Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==0  ChanFlag1==X  ChanFlag0==1
+        ETPU_VECTOR1(1,  x,  x, x, 1,  0, x, RESET),
+0004: 0x420E       Std Entry 2, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b001  Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==1  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(1,  x,  x, x, 1,  1, x, RESET),
+0006: 0x420E       Std Entry 3, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b001  Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==1  ChanFlag1==X  ChanFlag0==1
+        ETPU_VECTOR1(0,  1,  1, 1, x,  0, x, RESET),
+0014: 0x420E       Std Entry 10, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==1  matchB/TranA==1  InputPin==X  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(0,  1,  1, 1, x,  1, x, RESET),
+0016: 0x420E       Std Entry 11, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==1  matchB/TranA==1  InputPin==X  ChanFlag1==X  ChanFlag0==1
+        ETPU_VECTOR1(0,  1,  0, 0, 0,  0, x, RESET),
+0030: 0x420E       Std Entry 24, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==0  matchB/TranA==0  InputPin==0  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(0,  1,  0, 0, 0,  1, x, RESET),
+0032: 0x420E       Std Entry 25, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==0  matchB/TranA==0  InputPin==0  ChanFlag1==X  ChanFlag0==1
+        ETPU_VECTOR1(0,  1,  0, 0, 1,  0, x, RESET),
+0034: 0x420E       Std Entry 26, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==0  matchB/TranA==0  InputPin==1  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(0,  1,  0, 0, 1,  1, x, RESET),
+0036: 0x420E       Std Entry 27, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==0  matchB/TranA==0  InputPin==1  ChanFlag1==X  ChanFlag0==1
+        ETPU_VECTOR1(0,  1,  0, 1, x,  0, x, RESET),
+0038: 0x420E       Std Entry 28, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==0  matchB/TranA==1  InputPin==X  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(0,  1,  0, 1, x,  1, x, RESET),
+003A: 0x420E       Std Entry 29, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==0  matchB/TranA==1  InputPin==X  ChanFlag1==X  ChanFlag0==1
+        ETPU_VECTOR1(0,  1,  1, 0, x,  0, x, RESET),
+003C: 0x420E       Std Entry 30, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==1  matchB/TranA==0  InputPin==X  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(0,  1,  1, 0, x,  1, x, RESET),
+003E: 0x420E       Std Entry 31, Addr 0x838, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==1  matchA/TranB==1  matchB/TranA==0  InputPin==X  ChanFlag1==X  ChanFlag0==1
+    
+        //           HSR LSR M1 M2 PIN F0 F1 vector
+        ETPU_VECTOR1(0,  0,  0, 1, 0,  0, x, LOG_1_TRANS),
+0018: 0x4215       Std Entry 12, Addr 0x854, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==0  matchA/TranB==0  matchB/TranA==1  InputPin==0  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(0,  0,  0, 1, 0,  1, x, LOG_1_TRANS),
+001A: 0x4215       Std Entry 13, Addr 0x854, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==0  matchA/TranB==0  matchB/TranA==1  InputPin==0  ChanFlag1==X  ChanFlag0==1
+        ETPU_VECTOR1(0,  0,  0, 1, 1,  0, x, LOG_1_TRANS),
+001C: 0x4215       Std Entry 14, Addr 0x854, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==0  matchA/TranB==0  matchB/TranA==1  InputPin==1  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(0,  0,  0, 1, 1,  1, x, LOG_1_TRANS),
+001E: 0x4215       Std Entry 15, Addr 0x854, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==0  matchA/TranB==0  matchB/TranA==1  InputPin==1  ChanFlag1==X  ChanFlag0==1
+    
+        //           HSR LSR M1 M2 PIN F0 F1 vector
+        ETPU_VECTOR1(0,  0,  1, 1, 0,  0, x, LOG_2_TRANS),
+0028: 0x4223       Std Entry 20, Addr 0x88C, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==0  matchA/TranB==1  matchB/TranA==1  InputPin==0  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(0,  0,  1, 1, 0,  1, x, LOG_2_TRANS),
+002A: 0x4223       Std Entry 21, Addr 0x88C, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==0  matchA/TranB==1  matchB/TranA==1  InputPin==0  ChanFlag1==X  ChanFlag0==1
+        ETPU_VECTOR1(0,  0,  1, 1, 1,  0, x, LOG_2_TRANS),
+002C: 0x4223       Std Entry 22, Addr 0x88C, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==0  matchA/TranB==1  matchB/TranA==1  InputPin==1  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(0,  0,  1, 1, 1,  1, x, LOG_2_TRANS),
+002E: 0x4223       Std Entry 23, Addr 0x88C, EnableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==0  matchA/TranB==1  matchB/TranA==1  InputPin==1  ChanFlag1==X  ChanFlag0==1
+    
+        // unused/invalid entries
+        ETPU_VECTOR1(2,  x,  x, x, x,  x, x, _Error_handler_unexpected_thread),
+0008: 0x09F0       Std Entry 4, Addr 0x27C0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b010  Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==X  ChanFlag1==X  ChanFlag0==X
+        ETPU_VECTOR1(3,  x,  x, x, x,  x, x, _Error_handler_unexpected_thread),
+000A: 0x09F0       Std Entry 5, Addr 0x27C0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b011  Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==X  ChanFlag1==X  ChanFlag0==X
+        ETPU_VECTOR1(4,  x,  x, x, x,  x, x, _Error_handler_unexpected_thread),
+000C: 0x09F0       Std Entry 6, Addr 0x27C0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b100  Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==X  ChanFlag1==X  ChanFlag0==X
+        ETPU_VECTOR1(5,  x,  x, x, x,  x, x, _Error_handler_unexpected_thread),
+000E: 0x09F0       Std Entry 7, Addr 0x27C0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b101  Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==X  ChanFlag1==X  ChanFlag0==X
+        ETPU_VECTOR1(6,  x,  x, x, x,  x, x, _Error_handler_unexpected_thread),
+0010: 0x09F0       Std Entry 8, Addr 0x27C0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b110  Link==X  matchA/TranB==X  matchB/TranA==X  InputPin==X  ChanFlag1==X  ChanFlag0==X
+        ETPU_VECTOR1(0,  0,  1, 0, 0,  0, x, _Error_handler_unexpected_thread),
+0020: 0x09F0       Std Entry 16, Addr 0x27C0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==0  matchA/TranB==1  matchB/TranA==0  InputPin==0  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(0,  0,  1, 0, 0,  1, x, _Error_handler_unexpected_thread),
+0022: 0x09F0       Std Entry 17, Addr 0x27C0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==0  matchA/TranB==1  matchB/TranA==0  InputPin==0  ChanFlag1==X  ChanFlag0==1
+        ETPU_VECTOR1(0,  0,  1, 0, 1,  0, x, _Error_handler_unexpected_thread),
+0024: 0x09F0       Std Entry 18, Addr 0x27C0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==0  matchA/TranB==1  matchB/TranA==0  InputPin==1  ChanFlag1==X  ChanFlag0==0
+        ETPU_VECTOR1(0,  0,  1, 0, 1,  1, x, _Error_handler_unexpected_thread),
+0026: 0x09F0       Std Entry 19, Addr 0x27C0, DisableMatches, p_31_0=*( (channel U32 *)  0x0), diob=*( (channel U24 *)  0x5)
+    :              HSR==0b000  Link==0  matchA/TranB==1  matchB/TranA==0  InputPin==1  ChanFlag1==X  ChanFlag0==1
+    };
+    
+    
+    /*******************************************************************************
+    *  Export interface information to Host CPU program. 
+    *******************************************************************************/
+    /* [MISRA 2004 Rule 3.4] usage of #pragma write documented in the Pragma Write 
+       Manual, see https://www.ashware.com/Manuals */
+    #pragma write h, (::ETPUfilename (cpu/etpu_cam_auto.h));
+    #pragma write h, (/**************************************************************** );
+    #pragma write h, (* WARNING: This file is automatically generated. DO NOT EDIT IT! );
+    #pragma write h, (*);
+    #pragma write h, (* FILE NAME: etpu_cam_auto.h  );
+    #if defined(__TARGET_ETPU1__)
+    #pragma write h, (* ARCHITECTURE: eTPU );
+    #else
+    #pragma write h, (* ARCHITECTURE: eTPU2 );
+    #endif
+    #pragma write h, (*);
+    #pragma write h, (* This file was generated by: __FILE__ on __DATE__, __TIME__ );
+    #pragma write h, (*);
+    #pragma write h, (* This file provides an interface between eTPU code and CPU       );
+    #pragma write h, (* code. All references to the eTPU function should be made with   );
+    #pragma write h, (* information in this file. This allows only symbolic             );
+    #pragma write h, (* information to be referenced which allows the eTPU code to be   );
+    #pragma write h, (* optimized without effecting the CPU code.                       );
+    #pragma write h, (*****************************************************************/);
+    #pragma write h, (#ifndef _ETPU_CAM_AUTO_H_ );
+    #pragma write h, (#define _ETPU_CAM_AUTO_H_ );
+    #pragma write h, ( );
+    #pragma write h, (/* Function Configuration Information */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_FUNCTION_NUMBER) ::ETPUfunctionnumber(CAM) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_TABLE_SELECT) ::ETPUentrytype(CAM) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_NUM_PARMS) ::ETPUram(CAM) );
+    #pragma write h, ( );
+    #pragma write h, (/* Host Service Request Definitions */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_HSR_INIT)   CAM_HSR_INIT );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_HSR_RESET)  CAM_HSR_RESET );
+    #pragma write h, ( );
+    #pragma write h, (/* Function Mode Bit Definitions */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_FM0_LOG_FALLING)  (CAM_FM0_LOG_FALLING) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_FM1_LOG_RISING)   (CAM_FM1_LOG_RISING << 1) );
+    #pragma write h, ( );
+    #pragma write h, (/* Parameter Definitions */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_OFFSET_LOG       ) ::ETPUlocation (CAM, log      ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_OFFSET_LOG_SIZE  ) ::ETPUlocation (CAM, log_size ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_OFFSET_LOG_IDX   ) ::ETPUlocation (CAM, log_idx  ) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_OFFSET_LOG_COUNT ) ::ETPUlocation (CAM, log_count) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_OFFSET_ERROR     ) ::ETPUlocation (CAM, error    ) );
+    #pragma write h, ( );
+    #pragma write h, (/* Cam Log */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_LOG_ANGLE_MASK    ) 0x00FFFFFF );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_LOG_TRANS_MASK    ) (1<<24) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_LOG_TRANS_FALLING ) (CAM_FALLING<<24) );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_LOG_TRANS_RISING  ) (CAM_RISING<<24) );
+    #pragma write h, ( );
+    #pragma write h, (/* Errors */);
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_ERROR_NO           ) CAM_ERROR_NO           );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_ERROR_ZERO_TRANS   ) CAM_ERROR_ZERO_TRANS   );
+    #pragma write h, (::ETPUliteral(#define FS_ETPU_CAM_ERROR_LOG_OVERFLOW ) CAM_ERROR_LOG_OVERFLOW );
+    #pragma write h, ( );
+    #pragma write h, (#endif );
+    
+    /*********************************************************************
+     *
+     * Copyright:
+     *	Freescale Semiconductor, INC. All Rights Reserved.
+     *  You are hereby granted a copyright license to use, modify, and
+     *  distribute the SOFTWARE so long as this entire notice is
+     *  retained without alteration in any modified and/or redistributed
+     *  versions, and that such modified versions are clearly identified
+     *  as such. No licenses are granted by implication, estoppel or
+     *  otherwise under any patents or trademarks of Freescale
+     *  Semiconductor, Inc. This software is provided on an "AS IS"
+     *  basis and without warranty.
+     *
+     *  To the maximum extent permitted by applicable law, Freescale
+     *  Semiconductor DISCLAIMS ALL WARRANTIES WHETHER EXPRESS OR IMPLIED,
+     *  INCLUDING IMPLIED WARRANTIES OF MERCHANTABILITY OR FITNESS FOR A
+     *  PARTICULAR PURPOSE AND ANY WARRANTY AGAINST INFRINGEMENT WITH
+     *  REGARD TO THE SOFTWARE (INCLUDING ANY MODIFIED VERSIONS THEREOF)
+     *  AND ANY ACCOMPANYING WRITTEN MATERIALS.
+     *
+     *  To the maximum extent permitted by applicable law, IN NO EVENT
+     *  SHALL Freescale Semiconductor BE LIABLE FOR ANY DAMAGES WHATSOEVER
+     *  (INCLUDING WITHOUT LIMITATION, DAMAGES FOR LOSS OF BUSINESS PROFITS,
+     *  BUSINESS INTERRUPTION, LOSS OF BUSINESS INFORMATION, OR OTHER
+     *  PECUNIARY LOSS) ARISING OF THE USE OR INABILITY TO USE THE SOFTWARE.
+     *
+     *  Freescale Semiconductor assumes no responsibility for the
+     *  maintenance and support of this software
+     ********************************************************************/
+    
+    /*******************************************************************************
+    *
+    *  REVISION HISTORY:
+    *
+    *  FILE OWNER: Milan Brejl [r54529]
+    *  Revision 1.0  2014/03/16  r54529
+    *  Minor comment and formating improvements. MISRA compliancy check.
+    *  Ready for eTPU Engine Control Library release 1.0.
+    *
+    *  Revision 0.1  2012/06/12  r54529
+    *  Initial version.
+    *
+    *******************************************************************************/

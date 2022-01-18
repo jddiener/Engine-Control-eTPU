@@ -1,0 +1,110 @@
+// File 'inj_tab_init.ETpuCommand'
+
+// this file expects the inj table base address to be passed in the following define:
+// INJ_TAB_BASE_ADDR
+
+//*****************************************************************************
+// INJ Injection Table Initialization
+//*****************************************************************************
+#define P_INJECTION_1  (INJ_TAB_BASE_ADDR + 0 * FS_ETPU_INJ_INJECTION_STRUCT_SIZE)
+#define P_INJECTION_2  (INJ_TAB_BASE_ADDR + 1 * FS_ETPU_INJ_INJECTION_STRUCT_SIZE)
+#define P_INJECTION_3  (INJ_TAB_BASE_ADDR + 2 * FS_ETPU_INJ_INJECTION_STRUCT_SIZE)
+
+#define P_INJ1_PHASES  (P_INJECTION_3 + FS_ETPU_INJ_INJECTION_STRUCT_SIZE)
+#define P_INJ2_PHASES  (P_INJ1_PHASES + 8 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_INJ3_PHASES  (P_INJ2_PHASES + 8 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+
+write_global_data8(  P_INJECTION_1 + FS_ETPU_INJ_OFFSET_PHASE_COUNT,   7 );
+write_global_data24( P_INJECTION_1 + FS_ETPU_INJ_OFFSET_P_PHASE_FIRST, P_INJ1_PHASES );
+write_global_data24( P_INJECTION_1 + FS_ETPU_INJ_OFFSET_ANGLE_START,   deg2tcr2( 30) );
+
+write_global_data8(  P_INJECTION_2 + FS_ETPU_INJ_OFFSET_PHASE_COUNT,   7 );
+write_global_data24( P_INJECTION_2 + FS_ETPU_INJ_OFFSET_P_PHASE_FIRST, P_INJ2_PHASES );
+write_global_data24( P_INJECTION_2 + FS_ETPU_INJ_OFFSET_ANGLE_START,   deg2tcr2( 15) );
+
+write_global_data8(  P_INJECTION_3 + FS_ETPU_INJ_OFFSET_PHASE_COUNT,   5 );
+write_global_data24( P_INJECTION_3 + FS_ETPU_INJ_OFFSET_P_PHASE_FIRST, P_INJ3_PHASES );
+write_global_data24( P_INJECTION_3 + FS_ETPU_INJ_OFFSET_ANGLE_START,   deg2tcr2( -5) );
+
+#define P_PHASE_0 (P_INJ1_PHASES + 0 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_1 (P_INJ1_PHASES + 1 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_2 (P_INJ1_PHASES + 2 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_3 (P_INJ1_PHASES + 3 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_4 (P_INJ1_PHASES + 4 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_5 (P_INJ1_PHASES + 5 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_6 (P_INJ1_PHASES + 6 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+write_global_data8(  P_PHASE_0 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x0 );
+write_global_data24( P_PHASE_0 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 20) );
+write_global_data8(  P_PHASE_1 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x3 );
+write_global_data24( P_PHASE_1 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 60) );
+write_global_data8(  P_PHASE_2 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x1 );
+write_global_data24( P_PHASE_2 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 20) );
+write_global_data8(  P_PHASE_3 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x5 );
+write_global_data24( P_PHASE_3 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 60) );
+write_global_data8(  P_PHASE_4 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x1 );
+write_global_data24( P_PHASE_4 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 20) );
+write_global_data8(  P_PHASE_5 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x5 );
+write_global_data24( P_PHASE_5 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 40) );
+write_global_data8(  P_PHASE_6 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x0 );
+write_global_data24( P_PHASE_6 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 20) );
+#undef P_PHASE_0
+#undef P_PHASE_1
+#undef P_PHASE_2
+#undef P_PHASE_3
+#undef P_PHASE_4
+#undef P_PHASE_5
+#undef P_PHASE_6
+
+#define P_PHASE_0 (P_INJ2_PHASES + 0 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_1 (P_INJ2_PHASES + 1 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_2 (P_INJ2_PHASES + 2 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_3 (P_INJ2_PHASES + 3 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_4 (P_INJ2_PHASES + 4 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_5 (P_INJ2_PHASES + 5 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_6 (P_INJ2_PHASES + 6 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+write_global_data8(  P_PHASE_0 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x0 );
+write_global_data24( P_PHASE_0 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 20) );
+write_global_data8(  P_PHASE_1 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x3 );
+write_global_data24( P_PHASE_1 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 60) );
+write_global_data8(  P_PHASE_2 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x1 );
+write_global_data24( P_PHASE_2 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 20) );
+write_global_data8(  P_PHASE_3 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x5 );
+write_global_data24( P_PHASE_3 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 120) );
+write_global_data8(  P_PHASE_4 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x1 );
+write_global_data24( P_PHASE_4 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 40) );
+write_global_data8(  P_PHASE_5 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x5 );
+write_global_data24( P_PHASE_5 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 200) );
+write_global_data8(  P_PHASE_6 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x0 );
+write_global_data24( P_PHASE_6 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 20) );
+#undef P_PHASE_0
+#undef P_PHASE_1
+#undef P_PHASE_2
+#undef P_PHASE_3
+#undef P_PHASE_4
+#undef P_PHASE_5
+#undef P_PHASE_6
+
+#define P_PHASE_0 (P_INJ3_PHASES + 0 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_1 (P_INJ3_PHASES + 1 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_2 (P_INJ3_PHASES + 2 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_3 (P_INJ3_PHASES + 3 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_4 (P_INJ3_PHASES + 4 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_5 (P_INJ3_PHASES + 5 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+#define P_PHASE_6 (P_INJ3_PHASES + 6 * FS_ETPU_INJ_PHASE_STRUCT_SIZE)
+write_global_data8(  P_PHASE_0 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x0 );
+write_global_data24( P_PHASE_0 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 20) );
+write_global_data8(  P_PHASE_1 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x3 );
+write_global_data24( P_PHASE_1 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 60) );
+write_global_data8(  P_PHASE_2 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x1 );
+write_global_data24( P_PHASE_2 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 20) );
+write_global_data8(  P_PHASE_3 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x5 );
+write_global_data24( P_PHASE_3 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 80) );
+write_global_data8(  P_PHASE_4 + FS_ETPU_INJ_OFFSET_DMAS_OUTPUTS,       0x0 );
+write_global_data24( P_PHASE_4 + FS_ETPU_INJ_OFFSET_DURATION,           usec2tcr1( 20) );
+#undef P_PHASE_0
+#undef P_PHASE_1
+#undef P_PHASE_2
+#undef P_PHASE_3
+#undef P_PHASE_4
+#undef P_PHASE_5
+#undef P_PHASE_6

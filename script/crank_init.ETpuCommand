@@ -1,0 +1,64 @@
+// File 'crank_init.ETpuCommand'
+
+// this file expects the crank channel and base address to be passed in 
+// the following defines:
+// CRANK_CHAN
+// CRANK_BASE_ADDR
+
+//*****************************************************************************
+// eTPU Channel CRANK Configuration 
+//*****************************************************************************
+write_chan_base_addr(       CRANK_CHAN, CRANK_BASE_ADDR );
+write_chan_func(            CRANK_CHAN, FS_ETPU_CRANK_FUNCTION_NUMBER );
+write_chan_entry_condition( CRANK_CHAN, FS_ETPU_CRANK_TABLE_SELECT );
+write_chan_mode(            CRANK_CHAN, FS_ETPU_CRANK_FM0_USE_TRANS_FALLING + FS_ETPU_CRANK_FM1_TOOTH_PERIODS_LOG_ON );
+write_chan_hsrr(            CRANK_CHAN, FS_ETPU_CRANK_HSR_INIT );
+write_chan_cpr(             CRANK_CHAN, 1 );
+  
+//*****************************************************************************
+// eTPU Channel CRANK Parameters Initialization
+//*****************************************************************************
+write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_BLANK_TIME,                msec2tcr1(10) );
+write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_TCR2_TICKS_PER_TOOTH,      TCR2_TICKS_PER_TOOTH );
+write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_LAST_TOOTH_TCR1_TIME,      0 );
+write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_LAST_TOOTH_PERIOD,         0 );
+write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_TCR2_ADJUSTMENT,           0 );
+//write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_GAP_RATIO,                 ufract24(0.6) );
+write_val("@" STRINGIFY(CRANK_CHAN) ".gap_ratio",                  "0.6" );
+//write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_WIN_RATIO_NORMAL,          ufract24(0.2) );
+write_val("@" STRINGIFY(CRANK_CHAN) ".win_ratio_normal",           "0.2" );
+//write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_WIN_RATIO_ACROSS_GAP,      ufract24(0.5) );
+write_val("@" STRINGIFY(CRANK_CHAN) ".win_ratio_across_gap",       "0.5" );
+//write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_WIN_RATIO_AFTER_GAP,       ufract24(0.2) );
+write_val("@" STRINGIFY(CRANK_CHAN) ".win_ratio_after_gap",        "0.2" );
+//write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_WIN_RATIO_AFTER_TIMEOUT,   ufract24(0.5) );
+write_val("@" STRINGIFY(CRANK_CHAN) ".win_ratio_after_timeout",    "0.5" );
+write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_FIRST_TOOTH_TIMEOUT,       msec2tcr1(10) );
+write_chan_data24( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_TOOTH_PERIOD_LOG,          CRANK_BASE_ADDR + FS_ETPU_CRANK_NUM_PARMS );
+
+write_chan_data8(  CRANK_CHAN, FS_ETPU_CRANK_OFFSET_TEETH_TILL_GAP,        TEETH_TILL_GAP );
+write_chan_data8(  CRANK_CHAN, FS_ETPU_CRANK_OFFSET_TEETH_IN_GAP,          TEETH_IN_GAP );
+write_chan_data8(  CRANK_CHAN, FS_ETPU_CRANK_OFFSET_TEETH_PER_CYCLE,       TEETH_PER_CYCLE );
+write_chan_data8(  CRANK_CHAN, FS_ETPU_CRANK_OFFSET_TEETH_PER_SYNC,        TEETH_PER_CYCLE / 2 );
+write_chan_data8(  CRANK_CHAN, FS_ETPU_CRANK_OFFSET_TOOTH_COUNTER_GAP,     0 );
+write_chan_data8(  CRANK_CHAN, FS_ETPU_CRANK_OFFSET_TOOTH_COUNTER_CYCLE,   0 );
+write_chan_data8(  CRANK_CHAN, FS_ETPU_CRANK_OFFSET_BLANK_TEETH,           5 );
+write_chan_data8(  CRANK_CHAN, FS_ETPU_CRANK_OFFSET_STATE,                 0 );
+write_chan_data8(  CRANK_CHAN, FS_ETPU_CRANK_OFFSET_ERROR,                 0 );
+
+//set misscnt_mask [expr $::TEETH_IN_GAP << (13-8)]
+//set misscnt_mask [expr ($misscnt_mask & 0x60) | (($misscnt_mask & 0x80)>>5)]
+write_chan_data16( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_MISSCNT_MASK, ((TEETH_IN_GAP & 0x3) << 13) | ((TEETH_IN_GAP & 0x4) << (10-2)) ); 
+
+write_chan_data32( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_LINK_CAM,   0x01010101 );
+write_chan_data32( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_LINK_1,     0x02030405 );
+write_chan_data32( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_LINK_2,     0x06070809 );
+write_chan_data32( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_LINK_3,     0x0A0B0C0D );
+write_chan_data32( CRANK_CHAN, FS_ETPU_CRANK_OFFSET_LINK_4,     0x0E0F1011 );
+  
+//*****************************************************************************
+// eTPU Global CRANK Parameters Initialization
+//*****************************************************************************
+write_global_data24( FS_ETPU_OFFSET_ENG_CYCLE_TCR2_TICKS,  TCR2_TICKS_PER_CYCLE );
+write_global_data24( FS_ETPU_OFFSET_ENG_CYCLE_TCR2_START,  0 );
+write_global_data8(  FS_ETPU_OFFSET_ENG_POS_STATE,         0 );

@@ -1,0 +1,26 @@
+// File 'cam_init.ETpuCommand'
+
+// this file expects the cam channel and base address to be passed in 
+// the following defines:
+// CAM_CHAN
+// CAM_BASE_ADDR
+
+//*****************************************************************************
+// eTPU Channel CAM Configuration 
+//*****************************************************************************
+write_chan_base_addr(       CAM_CHAN, CAM_BASE_ADDR );
+write_chan_func(            CAM_CHAN, FS_ETPU_CAM_FUNCTION_NUMBER );
+write_chan_entry_condition( CAM_CHAN, FS_ETPU_CAM_TABLE_SELECT );
+write_chan_mode(            CAM_CHAN, FS_ETPU_CAM_FM0_LOG_FALLING + FS_ETPU_CAM_FM1_LOG_RISING );
+write_chan_hsrr(            CAM_CHAN, FS_ETPU_CAM_HSR_INIT );
+write_chan_cpr(             CAM_CHAN, 1 );
+  
+//*****************************************************************************
+// eTPU Channel CAM Parameters Initialization
+//*****************************************************************************
+write_chan_data24( CAM_CHAN, FS_ETPU_CAM_OFFSET_LOG_SIZE,    8 );
+write_chan_data24( CAM_CHAN, FS_ETPU_CAM_OFFSET_LOG_IDX,     0 );
+write_chan_data24( CAM_CHAN, FS_ETPU_CAM_OFFSET_LOG_COUNT,   0 );
+write_chan_data24( CAM_CHAN, FS_ETPU_CAM_OFFSET_LOG,         CAM_BASE_ADDR + FS_ETPU_CAM_NUM_PARMS );
+
+write_chan_data8(  CAM_CHAN, FS_ETPU_CAM_OFFSET_ERROR,       0 );
