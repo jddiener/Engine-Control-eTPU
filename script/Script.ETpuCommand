@@ -11,7 +11,7 @@
 #include "..\etpu1\cpu\etpu_knock_auto.h"
 #include "..\etpu1\cpu\etpu_spark_auto.h"
 #include "..\etpu1\cpu\etpu_tg_auto.h"
-#include "..\etpu1\MyCode_defines.h"
+#include "..\etpu1\etpu_set_defines.h"
 #elif defined(MPC5674F_2)
 #include "..\etpu2\cpu\etpu_cam_auto.h"
 #include "..\etpu2\cpu\etpu_crank_auto.h"
@@ -20,7 +20,7 @@
 #include "..\etpu2\cpu\etpu_knock_auto.h"
 #include "..\etpu2\cpu\etpu_spark_auto.h"
 #include "..\etpu2\cpu\etpu_tg_auto.h"
-#include "..\etpu2\MyCode_defines.h"
+#include "..\etpu2\etpu_set_defines.h"
 #endif
 
 //*******************************************************************************
@@ -260,6 +260,8 @@ place_buffer( (TG_CAM_CHAN+32),   CAM_CHAN);
 
 // INITIALIZATION DONE, LET IT RUN!
 
+//at_time(342500);
+//write_reg24(0xA0000, REG_TICK_RATE);
 
 // command sync (crank just reached pre-full-sync)
 at_time(344000);

@@ -443,6 +443,29 @@ _eTPU_fragment CRANK::Stall_NoReturn(void)
 }
 
 /*******************************************************************************
+*  FUNCTION NAME: ToothTcr2Sync_NoReturn
+*  DESCRIPTION: Set a match for the tooth-tcr2 sync point so that TCR2 can be
+*    reset at a known safe time.
+*******************************************************************************/
+_eTPU_fragment CRANK::ToothTcr2Sync_NoReturn()
+{
+    /* switch to match on TCR2 */
+    channel.TBSA = TBS_M2C1GE;
+    channel.TBSB = TBS_M2C2GE;
+    if (teeth_per_cycle > teeth_per_sync)
+    	erta = ertb = eng_cycle_tcr2_ticks >> 1;
+    else
+    	erta = ertb = eng_cycle_tcr2_ticks;
+    channel.MRLA = MRL_CLEAR;
+    channel.MRLB = MRL_CLEAR;
+    channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+    channel.TDL = TDL_CLEAR;  /* clear noise transition, if any */
+    channel.FLAG1 = CRANK_FLAG1_TOOTH_TCR2_SYNC;
+    state = CRANK_TOOTH_TCR2_SYNC;
+}
+
+/*******************************************************************************
 *  FUNCTION NAME: ToothArray_Log
 *  DESCRIPTION: If enabled (FM1 set) log tooth_period 
 *    into the tooth_period_log array at position [tooth_counter_cycle-1].
@@ -538,6 +561,7 @@ _eTPU_thread CRANK::INIT(_eTPU_matches_disabled)
 	{
 		channel.FLAG0 = CRANK_FLAG0_ADDITIONAL_TOOTH;
 	}
+	channel.FLAG1 = CRANK_FLAG1_NORMAL_MODE;
 
 	/* Default values */
 	trr = 0xffffff;
@@ -914,13 +938,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 						/* set global eng_pos state and channel interrupt */
 						eng_pos_state = ENG_POS_PRE_FULL_SYNC;
 						channel.CIRC = CIRC_INT_FROM_SERVICED;
-						/* reset tooth_counter_cycle */
-						tooth_counter_cycle = 1;
-						/* reset TCR2 */
-						tcr2 = 0;
-#ifdef ERRATA_2477
-						err2477_tcr2_target = 0;
-#endif
+						ToothTcr2Sync_NoReturn();
 					}
 					break;
 				case ENG_POS_PRE_FULL_SYNC:
@@ -933,13 +951,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 						channel.CIRC = CIRC_INT_FROM_SERVICED;
 						/* reset Cam log */
 						Link4(link_cam);
-						/* reset tooth_counter_cycle */
-						tooth_counter_cycle = 1;
-						/* reset TCR2 */
-						tcr2 = 0;
-#ifdef ERRATA_2477
-						err2477_tcr2_target = 0;
-#endif
+						ToothTcr2Sync_NoReturn();
 					}
 					break;
 				case ENG_POS_FULL_SYNC:
@@ -956,6 +968,8 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 						Link4(link_cam);
 						/* reset tooth_counter_cycle */
 						tooth_counter_cycle = 1;
+						/* collect diagnostic data */
+						tcr2_error_at_cycle_start = tcr2 - eng_cycle_tcr2_start - tcr2_adjustment;
 						/* increment eng_cycle_tcr2_start by one cycle */
 						eng_cycle_tcr2_start += eng_cycle_tcr2_ticks;
 					}
@@ -1528,10 +1542,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 						/* set global eng_pos state and channel interrupt */
 						eng_pos_state = ENG_POS_PRE_FULL_SYNC;
 						channel.CIRC = CIRC_INT_FROM_SERVICED;
-						/* reset tooth_counter_cycle */
-						tooth_counter_cycle = 1;
-						/* reset TCR2 */
-						tcr2 = 0;
+						ToothTcr2Sync_NoReturn();
 					}
 					break;
 				case ENG_POS_PRE_FULL_SYNC:
@@ -1544,10 +1555,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 						channel.CIRC = CIRC_INT_FROM_SERVICED;
 						/* reset Cam log */
 						Link4(link_cam);
-						/* reset tooth_counter_cycle */
-						tooth_counter_cycle = 1;
-						/* reset TCR2 */
-						tcr2 = 0;
+						ToothTcr2Sync_NoReturn();
 					}
 					break;
 				case ENG_POS_FULL_SYNC:
@@ -1564,6 +1572,8 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 						Link4(link_cam);
 						/* reset tooth_counter_cycle */
 						tooth_counter_cycle = 1;
+						/* collect diagnostic data */
+						tcr2_error_at_cycle_start = tcr2 - eng_cycle_tcr2_start - tcr2_adjustment;
 						/* increment eng_cycle_tcr2_start by one cycle */
 						eng_cycle_tcr2_start += eng_cycle_tcr2_ticks;
 					}
@@ -1764,6 +1774,63 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 	}
 }
 
+/**************************************************************************
+* THREAD NAME: CRANK_TOOTH_TCR2_SYNC_GAP
+* DESCRIPTION: This thread fires when it is safe to reset the TCR2 counter
+*              during synchronization (gapped wheel mode).
+**************************************************************************/
+_eTPU_thread CRANK::CRANK_TOOTH_TCR2_SYNC_GAP(_eTPU_matches_enabled)
+{
+    channel.MRLA = MRL_CLEAR;
+    channel.MRLB = MRL_CLEAR;
+    channel.FLAG1 = CRANK_FLAG1_NORMAL_MODE;
+    /* set back to match on TCR1 */
+    channel.TBSA = TBS_M1C1GE;
+    channel.TBSB = TBS_M1C2GE;
+
+    /* reset tooth_counter_cycle */
+    tooth_counter_cycle = 1;
+    /* reset TCR2 */
+    tcr2 = 0;
+#ifdef ERRATA_2477
+    err2477_tcr2_target = 0;
+#endif
+
+    erta = last_tooth_tcr1_time;
+    state = CRANK_COUNTING_TIMEOUT;
+
+    /* log tooth period (after possible tooth_counter_cycle reset) */
+    ToothArray_Log(last_tooth_period_norm);
+    /* open and close window using win_ratio_after_gap */
+    Window_NoReturn(win_ratio_after_gap, last_tooth_period_norm);
+}
+
+/**************************************************************************
+* THREAD NAME: CRANK_TOOTH_TCR2_SYNC_ADD
+* DESCRIPTION: This thread fires when it is safe to reset the TCR2 counter
+*              during synchronization (additional tooth wheel mode).
+**************************************************************************/
+_eTPU_thread CRANK::CRANK_TOOTH_TCR2_SYNC_ADD(_eTPU_matches_enabled)
+{
+    channel.MRLA = MRL_CLEAR;
+    channel.MRLB = MRL_CLEAR;
+    channel.FLAG1 = CRANK_FLAG1_NORMAL_MODE;
+    /* set back to match on TCR1 */
+    channel.TBSA = TBS_M1C1GE;
+    channel.TBSB = TBS_M1C2GE;
+
+    /* reset tooth_counter_cycle */
+    tooth_counter_cycle = 1;
+    /* reset TCR2 */
+    tcr2 = 0;
+
+    erta = last_tooth_tcr1_time;
+    state = CRANK_COUNTING_TIMEOUT;
+
+    /* open and close window using win_ratio_normal */
+    Window_NoReturn(win_ratio_normal, last_tooth_period_norm);
+}
+
 
 DEFINE_ENTRY_TABLE(CRANK, CRANK, alternate, inputpin, autocfsr)
 {
@@ -1775,15 +1842,19 @@ DEFINE_ENTRY_TABLE(CRANK, CRANK, alternate, inputpin, autocfsr)
 
 	//           HSR    LSR M1 M2 PIN F0 F1 vector
 	ETPU_VECTOR1(0,     x,  1, 1, 0,  0, 0, CRANK_WITH_GAP),
-	ETPU_VECTOR1(0,     x,  1, 1, 0,  0, 1, CRANK_WITH_GAP),
 	ETPU_VECTOR1(0,     x,  1, 1, 1,  0, 0, CRANK_WITH_GAP),
-	ETPU_VECTOR1(0,     x,  1, 1, 1,  0, 1, CRANK_WITH_GAP),
 
 	//           HSR    LSR M1 M2 PIN F0 F1 vector
 	ETPU_VECTOR1(0,     x,  1, 1, 0,  1, 0, CRANK_WITH_ADDITIONAL_TOOTH),
-	ETPU_VECTOR1(0,     x,  1, 1, 0,  1, 1, CRANK_WITH_ADDITIONAL_TOOTH),
 	ETPU_VECTOR1(0,     x,  1, 1, 1,  1, 0, CRANK_WITH_ADDITIONAL_TOOTH),
-	ETPU_VECTOR1(0,     x,  1, 1, 1,  1, 1, CRANK_WITH_ADDITIONAL_TOOTH),
+
+	//           HSR    LSR M1 M2 PIN F0 F1 vector
+	ETPU_VECTOR1(0,     x,  1, 1, 0,  0, 1, CRANK_TOOTH_TCR2_SYNC_GAP),
+	ETPU_VECTOR1(0,     x,  1, 1, 1,  0, 1, CRANK_TOOTH_TCR2_SYNC_GAP),
+
+	//           HSR    LSR M1 M2 PIN F0 F1 vector
+	ETPU_VECTOR1(0,     x,  1, 1, 0,  1, 1, CRANK_TOOTH_TCR2_SYNC_ADD),
+	ETPU_VECTOR1(0,     x,  1, 1, 1,  1, 1, CRANK_TOOTH_TCR2_SYNC_ADD),
 
     // unused/invalid entries
 	ETPU_VECTOR2(2,3,   x,  x, x, 0,  0, x, _Error_handler_unexpected_thread),
@@ -1918,8 +1989,9 @@ DEFINE_ENTRY_TABLE(CRANK, CRANK, alternate, inputpin, autocfsr)
 #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_COUNTING_TIMEOUT         ) CRANK_COUNTING_TIMEOUT         );
 #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_TOOTH_BEFORE_GAP         ) CRANK_TOOTH_BEFORE_GAP         );
 #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_TOOTH_BEFORE_GAP_NOT_HRM ) CRANK_TOOTH_BEFORE_GAP_NOT_HRM );
-#pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ADDITIONAL_TOOTH         ) CRANK_ADDITIONAL_TOOTH );
+#pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_ADDITIONAL_TOOTH         ) CRANK_ADDITIONAL_TOOTH         );
 #pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_TOOTH_AFTER_GAP          ) CRANK_TOOTH_AFTER_GAP          );
+#pragma write h, (::ETPUliteral(#define FS_ETPU_CRANK_TOOTH_TCR2_SYNC          ) CRANK_TOOTH_TCR2_SYNC          );
 #pragma write h, ( );
 #pragma write h, (/* Global Engine Position State values */);
 #pragma write h, (::ETPUliteral(#define FS_ETPU_ENG_POS_SEEK            ) ENG_POS_SEEK            );

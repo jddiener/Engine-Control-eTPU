@@ -22,3 +22,6 @@ Bug fixes:
 - fix a stall issue wherein there was a small window of TCR2 values which would result in 
   serious FUEL/SPARK/INJ/KNOCK misbehavior (output signals could fire while 
   re-synchronization still in progress).
+- fix an issue where after synchronization there can be a small phase shift between actual 
+  engine angle and reported angle, which remains constant until a re-synchronization
+  occurs.

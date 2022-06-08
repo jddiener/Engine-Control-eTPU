@@ -38,6 +38,8 @@
 /* Channel Flags */
 #define CRANK_FLAG0_GAP                 0
 #define CRANK_FLAG0_ADDITIONAL_TOOTH    1
+#define CRANK_FLAG1_NORMAL_MODE         0
+#define CRANK_FLAG1_TOOTH_TCR2_SYNC     1
 
 /* Errors */
 #define CRANK_ERR_NO_ERROR              0
@@ -65,6 +67,7 @@
 #define CRANK_TOOTH_BEFORE_GAP_NOT_HRM  10
 #define CRANK_ADDITIONAL_TOOTH          10
 #define CRANK_TOOTH_AFTER_GAP           11
+#define CRANK_TOOTH_TCR2_SYNC           12
 
 /* Global eng_pos_status values */
 #define ENG_POS_SEEK                    0
@@ -110,6 +113,7 @@ public:
           uint8_t    state;
           uint8_t    error;
     const uint24_t  *tooth_period_log;
+          int24_t    tcr2_error_at_cycle_start;
 #ifdef ERRATA_2477
            int24_t   err2477_tcr2_target;
 #endif 
@@ -124,6 +128,8 @@ public:
     _eTPU_thread ANGLE_ADJUST(_eTPU_matches_disabled);
     _eTPU_thread CRANK_WITH_GAP(_eTPU_matches_enabled);
     _eTPU_thread CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled);
+    _eTPU_thread CRANK_TOOTH_TCR2_SYNC_GAP(_eTPU_matches_enabled);
+    _eTPU_thread CRANK_TOOTH_TCR2_SYNC_ADD(_eTPU_matches_enabled);
     
     /* CRANK_EMUL */
     _eTPU_thread INIT_EMUL(_eTPU_matches_disabled);
@@ -152,6 +158,7 @@ public:
         register_a fract24_t win_ratio,
         register_d uint24_t tooth_period);
     _eTPU_fragment Stall_NoReturn();
+    _eTPU_fragment ToothTcr2Sync_NoReturn();
 
     
     /************************************/
