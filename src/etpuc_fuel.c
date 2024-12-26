@@ -337,9 +337,10 @@ _eTPU_thread FUEL::INIT(_eTPU_matches_disabled)
 	
 	/* Initialize actual TDC angle */
 	tdc_angle_actual = eng_cycle_tcr2_start + tdc_angle;
-	angle_stop_actual_last = tdc_angle_actual - angle_stop;
+	angle_stop_actual_last = tdc_angle_actual - angle_stop - eng_cycle_tcr2_ticks;
 	
 	/* Calculate the first start angle */
+    is_first_recalc = TRUE;
 	tmp = injection_time + compensation_time;
 	tmp = CRANK_Time_to_Angle_LowRes(tmp);
 	injection_start_angle = tdc_angle_actual - angle_normal_end - tmp;
