@@ -2,7 +2,7 @@
 
 // set clocks
 
-// Set the host clock to 250 Mhz (4 ns/clock -->1e6 FemtoSeconds/clock)
+// Set the host clock to 250 Mhz (4 ns/clock --> 4e6 Femtoseconds)
 set_clk_period(4000000);
 
 // Set the eTPU clock to 100 Mhz (clk_period in femtoseconds)

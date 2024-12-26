@@ -321,7 +321,7 @@ struct fuel_config_t fuel_config =
   DEG2TCR2(60),     /* angle_normal_end */
   DEG2TCR2(40),     /* angle_stop */
   DEG2TCR2(30),     /* angle_offset_recalc */
-  USEC2TCR1(20000), /* injection_time */
+  USEC2TCR1(2000), /* injection_time */
   USEC2TCR1(1000),  /* compensation_time */
   USEC2TCR1(1000),  /* injection_time_minimum */
   USEC2TCR1(1000)   /* off_time_minimum */
