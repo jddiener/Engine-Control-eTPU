@@ -1161,7 +1161,20 @@ void fs_etpu_set_global_24_ext(
   uint32_t offset,
   uint24_t value)
 {
-  *(uint32_t *)((uint32_t)fs_etpu_data_ram_ext + offset-1) = value;
+  uint32_t data_ram_start;
+
+  switch (em)
+  {
+  case EM_AB:
+  default:
+	  data_ram_start = fs_etpu_data_ram_ext;
+	  break;
+  case EM_C:
+	  data_ram_start = fs_etpu_c_data_ram_ext;
+	  break;
+  }
+
+  *(uint32_t*)((uint32_t)data_ram_start + (offset & ~3)) = value;
 }
 
 /*******************************************************************************
