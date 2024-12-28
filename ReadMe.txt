@@ -25,3 +25,5 @@ Bug fixes:
 - fix an issue where after synchronization there can be a small phase shift between actual 
   engine angle and reported angle, which remains constant until a re-synchronization
   occurs.
+- fix an issue where noise on the crank signal could result in a shift in the reported
+  engine position

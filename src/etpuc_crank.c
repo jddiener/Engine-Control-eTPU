@@ -336,7 +336,12 @@ _eTPU_fragment CRANK::Window_NoReturn(
 	channel.MRLB = MRL_CLEAR;
 	channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
 	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
-	channel.TDL = TDL_CLEAR;  /* clear noise transition, if any */
+	/**
+	* Only clear TDLA if it was what triggered this channel service.
+	* It is only cleared AFTER the window has been set up so that any noise transitions are properly ignored
+	*/
+	if (cc.TDLA == 1)
+    	channel.TDL = TDL_CLEAR;
 }
 
 /*******************************************************************************
@@ -359,7 +364,12 @@ _eTPU_fragment CRANK::WindowAcrossGap_NoReturn(
 	channel.MRLB = MRL_CLEAR;
 	channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
 	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
-	channel.TDL = TDL_CLEAR;  /* clear noise transition, if any */
+	/**
+	* Only clear TDLA if it was what triggered this channel service.
+	* It is only cleared AFTER the window has been set up so that any noise transitions are properly ignored
+	*/
+	if (cc.TDLA == 1)
+    	channel.TDL = TDL_CLEAR;
 }
 
 /*******************************************************************************
@@ -460,7 +470,12 @@ _eTPU_fragment CRANK::ToothTcr2Sync_NoReturn()
     channel.MRLB = MRL_CLEAR;
     channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
     channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
-    channel.TDL = TDL_CLEAR;  /* clear noise transition, if any */
+
+	/**
+	* TDL only cleared AFTER the window has been set up so that any noise transitions are properly ignored
+	*/
+    channel.TDL = TDL_CLEAR;
+
     channel.FLAG1 = CRANK_FLAG1_TOOTH_TCR2_SYNC;
     state = CRANK_TOOTH_TCR2_SYNC;
 }
@@ -613,7 +628,6 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 	if(cc.TDLA == 1)
 	{
 		/* A tooth transition detected */
-		channel.TDL = TDL_CLEAR;
 		switch(state)
 		{
 		case CRANK_SEEK:
@@ -623,6 +637,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 			*   First transition after INIT was detected.
 			*   Wait for blank_time without detecting transitions.
 			**************************************************************/
+            channel.TDL = TDL_CLEAR;
 			tcr2 = 0;
 			/* set_state */
 			state = CRANK_BLANK_TIME;
@@ -638,6 +653,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 			* DESCRIPTION: 
 			*   Count down blank_teeth without tooth period measurement.
 			**************************************************************/
+            channel.TDL = TDL_CLEAR;
 			tcr2 = 0;
 			/* Count down blank_teeth */
 			if(--blank_teeth <= 0)
@@ -655,6 +671,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 			*   Record transition time.
 			*   Next transition is expected within first_tooth_timeout. 
 			**************************************************************/
+            channel.TDL = TDL_CLEAR;
 			tcr2 = 0;
 			/* set_state */
 			state = CRANK_SECOND_TRANS;
@@ -673,6 +690,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 			*   Next transition is expected within a long timeout over 
 			*   a possible gap. 
 			**************************************************************/
+            channel.TDL = TDL_CLEAR;
 			tcr2 = 0;
 			/* set_state */
 			state = CRANK_TEST_POSSIBLE_GAP;
@@ -699,6 +717,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 			*   Else, expect next transition within a long timeout over 
 			*     a possible gap.
 			**************************************************************/
+            // channel.TDL = TDL_CLEAR; - ONLY CLEAR TDL after the next window is set
 			tcr2 = 0;
 			/* calc tooth_period and record last_tooth_tcr1_time */
 			tooth_period = erta - last_tooth_tcr1_time;
@@ -740,6 +759,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 			*   Else, test possible gap again, expect next transition  
 			*     within a long timeout over a possible gap.
 			**************************************************************/
+            // channel.TDL = TDL_CLEAR; - ONLY CLEAR TDL after the next window is set
 			/* calc tooth_period and record last_tooth_tcr1_time */
 			tooth_period = erta - last_tooth_tcr1_time;
 			last_tooth_tcr1_time = erta;
@@ -807,6 +827,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 			*   Adjust TCR2 rate.
 			*   Expect next transition in normal window. 
 			**************************************************************/
+            // channel.TDL = TDL_CLEAR; - ONLY CLEAR TDL after the next window is set
 			/* record last_tooth_period and last_tooth_tcr1_time */
 			tooth_period = erta - last_tooth_tcr1_time;
 			last_tooth_tcr1_time = erta;
@@ -842,6 +863,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 			*   Adjust TCR2 rate.
 			*   Expect next transition within window across the gap. 
 			**************************************************************/
+            // channel.TDL = TDL_CLEAR; - ONLY CLEAR TDL after the next window is set
 			/* record last_tooth_period and last_tooth_tcr1_time */
 			tooth_period = erta - last_tooth_tcr1_time;
 			last_tooth_tcr1_time = erta;
@@ -863,6 +885,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 			channel.TBSB = TBS_M2C2GE;
 			/* open window immediately to enable match B
 			   and schedule the match B for when the EAC will be out of HRM */
+			channel.TDL = TDL_CLEAR;
 			CRANK_WindowCloseAt_NoReturn(err2477_tcr2_target);
 #else
 			/* set state */
@@ -907,6 +930,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 			if(muliur(tooth_period, gap_ratio)
 			   > last_tooth_period)
 			{ /* gap verified */
+                // channel.TDL = TDL_CLEAR; - ONLY CLEAR TDL after the next window is set
 				/* record last_tooth_period */
 				last_tooth_period = tooth_period;
 				/* calculate an average tooth_period within the gap */
@@ -989,6 +1013,7 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 				/* set error */
 				error |= CRANK_ERR_TOOTH_IN_GAP;
 				/* restart searching for the gap */
+                channel.TDL = TDL_CLEAR;
 				Stall_NoReturn();
 			}
 			break;
@@ -1001,10 +1026,12 @@ _eTPU_thread CRANK::CRANK_WITH_GAP(_eTPU_matches_enabled)
 			*   Transition detection should never happen in this state.
 			*   Set CRANK_ERR_INVALID_TRANS.
 			**************************************************************/
+			channel.TDL = TDL_CLEAR;
 			error |= CRANK_ERR_INVALID_TRANS;
 			break;
 
 		default:
+            channel.TDL = TDL_CLEAR;
 			error |= CRANK_ERR_INTERNAL;
 			break;
 		}
@@ -1197,7 +1224,6 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 	if(cc.TDLA == 1)
 	{
 		/* A tooth transition detected */
-		channel.TDL = TDL_CLEAR;
 		switch(state)
 		{
 		case CRANK_SEEK:
@@ -1207,6 +1233,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 			*   First transition after INIT was detected.
 			*   Wait for blank_time without detecting transitions.
 			**************************************************************/
+			channel.TDL = TDL_CLEAR;
 			tcr2 = 0;
 			/* set_state */
 			state = CRANK_BLANK_TIME;
@@ -1222,6 +1249,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 			* DESCRIPTION: 
 			*   Downcount blank_teeth without tooth period measurement.
 			**************************************************************/
+			channel.TDL = TDL_CLEAR;
 			tcr2 = 0;
 			/* downcount blank_teeth */
 			if(--blank_teeth <= 0)
@@ -1239,6 +1267,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 			*   Record transition time.
 			*   Next transition is expected within first_tooth_timeout. 
 			**************************************************************/
+			channel.TDL = TDL_CLEAR;
 			tcr2 = 0;
 			/* set_state */
 			state = CRANK_SECOND_TRANS;
@@ -1256,6 +1285,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 			*   Calculate tooth period and record transition time.
 			*   Next transition is expected in normal window or earlier. 
 			**************************************************************/
+			channel.TDL = TDL_CLEAR;
 			tcr2 = 0;
 			/* set_state */
 			state = CRANK_TEST_POSSIBLE_GAP;
@@ -1279,6 +1309,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 			*     window from the previous tooth (not the additional one).
 			*   Else, expect next transition in normal window or earlier.
 			**************************************************************/
+			channel.TDL = TDL_CLEAR;
 			tcr2 = 0;
 			/* calc tooth_period */
 			tooth_period = erta - last_tooth_tcr1_time;
@@ -1329,6 +1360,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 			if(muliur(tooth_period, gap_ratio)
 			   > additional_tooth_period)
 			{ /* additional tooth verified */
+                // channel.TDL = TDL_CLEAR; - ONLY CLEAR TDL after the next window is set
 				/* set states */
 				state = CRANK_COUNTING;
 				/* record last_tooth_period */
@@ -1352,6 +1384,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 			else
 			{ /* additional tooth not verified */
 				/* set state */
+				channel.TDL = TDL_CLEAR;
 				state = CRANK_TEST_POSSIBLE_GAP;
 				/* correct tooth_period - it was not the additional tooth */
 				tooth_period -= additional_tooth_period;
@@ -1387,6 +1420,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 			*   Adjust TCR2 rate.
 			*   Expect next transition in normal window. 
 			**************************************************************/
+            // channel.TDL = TDL_CLEAR; - ONLY CLEAR TDL after the next window is set
 			/* record last_tooth_period and last_tooth_tcr1_time */
 			tooth_period = erta - last_tooth_tcr1_time;
 			last_tooth_tcr1_time = erta;
@@ -1419,6 +1453,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 			*   Adjust TCR2 rate.
 			*   Expect next transition in normal window or earlier. 
 			**************************************************************/
+			channel.TDL = TDL_CLEAR;
 			/* record last_tooth_period and last_tooth_tcr1_time */
 			tooth_period = erta - last_tooth_tcr1_time;
 			last_tooth_tcr1_time = erta;
@@ -1453,6 +1488,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 			*     set ENG_POS_SEEK and IRQ, signal output functions and
 			*     restart searching for the gap  
 			**************************************************************/
+			channel.TDL = TDL_CLEAR;
 			/* calc tooth_period */
 			tooth_period = erta - last_tooth_tcr1_time;
 			/* Set TICKS */
@@ -1519,6 +1555,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 			if(muliur(tooth_period, gap_ratio)
 			   > additional_tooth_period)
 			{ /* additional tooth verified */
+                // channel.TDL = TDL_CLEAR; - ONLY CLEAR TDL after the next window is set
 				/* record last_tooth_period */
 				last_tooth_period = tooth_period;
 				last_tooth_period_norm = tooth_period; 
@@ -1592,6 +1629,7 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 				/* set error */
 				error |= CRANK_ERR_ADD_TOOTH_NOT_FOUND;
 				/* restart searching for the gap */
+                channel.TDL = TDL_CLEAR;
 				Stall_NoReturn();
 			}
 			break;
@@ -1603,10 +1641,12 @@ _eTPU_thread CRANK::CRANK_WITH_ADDITIONAL_TOOTH(_eTPU_matches_enabled)
 			*   Transition detection should never happen in this state.
 			*   Set CRANK_ERR_INVALID_TRANS.
 			**************************************************************/
+			channel.TDL = TDL_CLEAR;
 			error |= CRANK_ERR_INVALID_TRANS;
 			break;
 
 		default:
+            channel.TDL = TDL_CLEAR;
 			error |= CRANK_ERR_INTERNAL;
 			break;
 		}
