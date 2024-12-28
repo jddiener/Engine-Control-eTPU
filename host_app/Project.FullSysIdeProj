@@ -8,7 +8,7 @@
   <target name="Host">
     <search_path val="include" />
     <search_path val="eTPU\utils" />
-    <search_path val="..\etpu2\cpu" />
+    <search_path val="cpu" />
     <search_path val="..\API\cam" />
     <search_path val="..\API\crank" />
     <search_path val="..\API\fuel" />
@@ -35,19 +35,20 @@
   <!--=======================================================-->
   <!--======    START TARGET-SPECIFIC SETTINGS        =======-->
   <target name="eTPU_A">
-    <search_path val="include" />
-    <search_path val="eTPU\utils" />
-    <search_path val="..\etpu2\cpu" />
-    <search_path val="..\API\cam" />
-    <search_path val="..\API\crank" />
-    <search_path val="..\API\fuel" />
-    <search_path val="..\API\inj" />
-    <search_path val="..\API\knock" />
-    <search_path val="..\API\spark" />
-    <search_path val="..\API\tg" />
-    <internal_build val="false" enabled="false" />
-    <executable_file name="..\etpu2\etpu_set.elf" />
-    <code_batch_file name="..\etpu2\Mk.bat" />
+    <search_path val="." />
+    <pgm_model val="2" />
+    <etec_dir val="Development" />
+    <internal_build val="true" />
+    <link_file name="etpu_set.elf" lst_choice="3" lst_dir="lst\" />
+    <source_file name="..\src\etpuc_cam.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_crank.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_crank_emul.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_fuel.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_inj.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_knock.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_set.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_spark.c" tool="ETEC_CC" />
+    <source_file name="..\src\etpuc_tg.c" tool="ETEC_CC" />
   </target>
   <!--======    END TARGET-SPECIFIC SETTINGS          =======-->
   <!--=======================================================-->
