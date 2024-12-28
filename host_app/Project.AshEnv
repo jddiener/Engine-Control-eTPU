@@ -10,7 +10,7 @@
   <TabPage type="LogicAnalyzer" ctrl="output1TabControl" FloatingWindow="True" x="2111" y="290" width="2287" height="1431">
     <ScopeSettings selected_channel="23" selected_cursor="1" auto_scroll="True" first_chan="0" width="163" />
     <ScopeTimes>
-      <LeftSide word_a="0" word_b="16400" word_c="2453509511" />
+      <LeftSide word_a="0" word_b="13584" word_c="890229919" />
       <Width word_a="0" word_b="8849" word_c="4126437794" />
       <LeftCursor word_a="0" word_b="9008" word_c="4173144873" />
       <RightCursor word_a="0" word_b="14901" word_c="2387424393" />
@@ -53,31 +53,18 @@
     <Host />
     <eTPU_A />
   </TabPage>
-  <TabPage type="Source" ctrl="edit1TabControl" file="..\src\etpuc_crank.c" top_line="464" start_pos="18809" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit1TabControl" file="main.c" top_line="821" sel="true" start_pos="22141" len="0" sel_text="" />
+  <TabPage type="Source" ctrl="edit1TabControl" file="main.c" top_line="811" sel="true" start_pos="21840" len="0" sel_text="" />
   <TabPage type="Source" ctrl="edit1TabControl" file="..\API\fuel\etpu_fuel.c" top_line="214" start_pos="9450" len="0" sel_text="" />
   <TabPage type="Source" ctrl="edit1TabControl" file="..\API\crank\etpu_crank.c" top_line="407" start_pos="18530" len="0" sel_text="" />
   <TabPage type="Source" ctrl="edit1TabControl" file="etpu_gct.c" top_line="202" start_pos="13729" len="25" sel_text="  DEG2TCR2(30),     /* an" />
   <TabPage type="Script" ctrl="edit1TabControl" file="Project.Cpu32Command" top_line="0" start_pos="499" len="0" sel_text="" />
   <TabPage type="Source" ctrl="edit1TabControl" file="..\API\tg\etpu_tg.c" top_line="182" start_pos="7168" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit1TabControl" file="..\src\etpuc_spark.c" top_line="460" start_pos="17776" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit1TabControl" file="..\src\etpuc_fuel.c" top_line="152" start_pos="8459" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit1TabControl" file="..\src\etpuc_set.c" top_line="44" start_pos="1707" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit1TabControl" file="..\src\etpuc_tg.c" top_line="210" start_pos="7470" len="0" sel_text="" />
   <TabPage type="Source" ctrl="edit1TabControl" file="eTPU\utils\etpu_util.c" top_line="809" start_pos="33337" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit1TabControl" file="..\src\etpuc_crank_emul.c" top_line="196" start_pos="9136" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit2TabControl" file="etpu_gct.h" top_line="14" start_pos="880" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit2TabControl" file="..\src\etpuc_crank.h" top_line="106" start_pos="4496" len="0" sel_text="" />
+  <TabPage type="Source" ctrl="edit2TabControl" file="etpu_gct.h" top_line="14" sel="true" start_pos="880" len="0" sel_text="" />
   <TabPage type="Source" ctrl="edit2TabControl" file="..\API\fuel\etpu_fuel.h" top_line="43" start_pos="0" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit2TabControl" file="..\API\crank\etpu_crank.h" top_line="9" sel="true" focus="true" start_pos="806" len="0" sel_text="" />
+  <TabPage type="Source" ctrl="edit2TabControl" file="..\API\crank\etpu_crank.h" top_line="9" start_pos="806" len="0" sel_text="" />
   <TabPage type="Source" ctrl="edit2TabControl" file="eTPU\utils\etpu_util.h" top_line="360" start_pos="11317" len="0" sel_text="" />
   <TabPage type="RegisterWindow" ctrl="edit2TabControl" target_tag="eTpu" win_type="FTWT_CHANNEL" channel="2" target="eTPU_A" top_line="0" />
-  <TabPage type="Source" ctrl="edit2TabControl" file="..\src\etpuc_fuel.h" top_line="30" start_pos="2122" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit2TabControl" file="..\src\etpuc_inj.h" top_line="44" start_pos="1474" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit2TabControl" file="C:\Program Files (x86)\ASH WARE\eTPU Compiler V2_62E\Include\ETpu_Hw.h" top_line="436" start_pos="20178" len="12" sel_text="MRLE_DISABLE" />
-  <TabPage type="Source" ctrl="edit2TabControl" file="C:\Program Files (x86)\ASH WARE\eTPU Compiler V2_62E\Include\etpu_std.h" top_line="391" start_pos="17295" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit2TabControl" file="..\src\etpuc_spark.h" top_line="18" start_pos="2677" len="0" sel_text="" />
-  <TabPage type="Source" ctrl="edit2TabControl" file="C:\Program Files (x86)\ASH WARE\eTPU Compiler V2_62E\Include\ETpu_Lib.h" top_line="316" start_pos="15618" len="0" sel_text="" />
   <TabPage type="Output" ctrl="output1TabControl" sel="true" />
   <TabPage type="LocalVariable" ctrl="output1TabControl" target="1">
     <Columns width_1="299" width_2="111" width_3="177" />
@@ -106,7 +93,7 @@
   </TabPage>
   <TabPage type="Project" ctrl="projectTabControl" file="Project.FullSysIdeProj" sel="true" />
   <TabPage type="RegisterWindow" ctrl="projectTabControl" target_tag="eTpu" win_type="FTWT_REGISTER" target="eTPU_A" top_line="0" />
-  <selected_project_node name="CC: main.c" />
+  <selected_project_node name="CC: etpuc_crank.c" />
   <!--Saved last-used directories-->
   <last_dir type="ConsoleBat" dir="..\etpu2\" />
   <last_dir type="SourceAsmGtm" dir="eTPU\utils\" />
@@ -166,15 +153,6 @@
     <dependent_file file="..\..\ASHWARE\Builds\Include\ETpu_Hw.h" time="5249496698786792458" />
     <dependent_file file="..\..\ASHWARE\Builds\Include\ETpu_Lib.h" time="5249009246858268805" />
     <dependent_file file="..\src\etpuc_cam.h" time="5249462234395290788" />
-    <dependent_file file="..\src\etpuc_crank.h" time="5249589260066700592" />
-    <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
-    <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
-  </make_node>
-  <make_node target="eTPU_A" file="obj\etpuc_crank.eao" time="5250396097613390687">
-    <dependent_file file="..\src\etpuc_crank.c" time="5250396081737222163" />
-    <dependent_file file="..\..\ASHWARE\Builds\Include\etpu_std.h" time="5249496698786792458" />
-    <dependent_file file="..\..\ASHWARE\Builds\Include\ETpu_Hw.h" time="5249496698786792458" />
-    <dependent_file file="..\..\ASHWARE\Builds\Include\ETpu_Lib.h" time="5249009246858268805" />
     <dependent_file file="..\src\etpuc_crank.h" time="5249589260066700592" />
     <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
     <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
@@ -245,7 +223,24 @@
     <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
     <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
   </make_node>
-  <make_node target="Host" file="obj\main.o" time="5250396097693252969">
+  <make_node target="Host" file="obj\etpu_util.o" time="5250396097701844701">
+    <dependent_file file="eTPU\utils\etpu_util.c" time="5249455410519522963" />
+    <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
+    <dependent_file file="include\typedefs.h" time="5249455410520502115" />
+    <dependent_file file="eTPU\utils\etpu_struct.h" time="5249455410519473091" />
+    <dependent_file file="include\typedefs.h" time="5249455410520502115" />
+    <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
+  </make_node>
+  <make_node target="eTPU_A" file="obj\etpuc_crank.eao" time="5250396111049801281">
+    <dependent_file file="..\src\etpuc_crank.c" time="5250396110270114996" />
+    <dependent_file file="..\..\ASHWARE\Builds\Include\etpu_std.h" time="5249496698786792458" />
+    <dependent_file file="..\..\ASHWARE\Builds\Include\ETpu_Hw.h" time="5249496698786792458" />
+    <dependent_file file="..\..\ASHWARE\Builds\Include\ETpu_Lib.h" time="5249009246858268805" />
+    <dependent_file file="..\src\etpuc_crank.h" time="5249589260066700592" />
+    <dependent_file file="..\src\etpuc_set.h" time="5249460427932839653" />
+    <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
+  </make_node>
+  <make_node target="Host" file="obj\main.o" time="5250396111106915292">
     <dependent_file file="main.c" time="5249565649190503126" />
     <dependent_file file="..\..\ASHWARE\Builds\Include\isrLib.h" time="5249075081292280513" />
     <dependent_file file="..\..\ASHWARE\Builds\Include\scriptLib.h" time="5248851424849590795" />
@@ -258,28 +253,28 @@
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
     <dependent_file file="..\API\crank\etpu_crank.h" time="5249455410516060739" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_crank_auto.h" time="5250396097686356096" />
+    <dependent_file file="cpu\etpu_crank_auto.h" time="5250396111099042391" />
     <dependent_file file="..\API\cam\etpu_cam.h" time="5249455410515930734" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_cam_auto.h" time="5250396097686326176" />
+    <dependent_file file="cpu\etpu_cam_auto.h" time="5250396111099012476" />
     <dependent_file file="..\API\spark\etpu_spark.h" time="5249455410516569040" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_spark_auto.h" time="5250396097686625375" />
+    <dependent_file file="cpu\etpu_spark_auto.h" time="5250396111099301709" />
     <dependent_file file="..\API\fuel\etpu_fuel.h" time="5249455410516250308" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_fuel_auto.h" time="5250396097686395996" />
+    <dependent_file file="cpu\etpu_fuel_auto.h" time="5250396111099081860" />
     <dependent_file file="..\API\inj\etpu_inj.h" time="5249455410516369560" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_inj_auto.h" time="5250396097686426011" />
+    <dependent_file file="cpu\etpu_inj_auto.h" time="5250396111099111785" />
     <dependent_file file="..\API\knock\etpu_knock.h" time="5249455410516469314" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_knock_auto.h" time="5250396097686445861" />
+    <dependent_file file="cpu\etpu_knock_auto.h" time="5250396111099132194" />
     <dependent_file file="..\API\tg\etpu_tg.h" time="5249455410516668773" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_tg_auto.h" time="5250396097686645324" />
+    <dependent_file file="cpu\etpu_tg_auto.h" time="5250396111099311250" />
     <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
   </make_node>
-  <make_node target="Host" file="obj\etpu_gct.o" time="5250396097696377232">
+  <make_node target="Host" file="obj\etpu_gct.o" time="5250396111110190726">
     <dependent_file file="etpu_gct.c" time="5250386376631703835" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
@@ -288,112 +283,104 @@
     <dependent_file file="etpu_gct.h" time="5249455410519752347" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
     <dependent_file file="include\mpc5674f_vars.h" time="5249455410520362474" />
-    <dependent_file file="cpu\etpu_set.h" time="5250396097686605427" />
+    <dependent_file file="cpu\etpu_set.h" time="5250396111099271771" />
     <dependent_file file="..\API\crank\etpu_crank.h" time="5249455410516060739" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_crank_auto.h" time="5250396097686356096" />
+    <dependent_file file="cpu\etpu_crank_auto.h" time="5250396111099042391" />
     <dependent_file file="..\API\cam\etpu_cam.h" time="5249455410515930734" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_cam_auto.h" time="5250396097686326176" />
+    <dependent_file file="cpu\etpu_cam_auto.h" time="5250396111099012476" />
     <dependent_file file="..\API\fuel\etpu_fuel.h" time="5249455410516250308" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_fuel_auto.h" time="5250396097686395996" />
+    <dependent_file file="cpu\etpu_fuel_auto.h" time="5250396111099081860" />
     <dependent_file file="..\API\spark\etpu_spark.h" time="5249455410516569040" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_spark_auto.h" time="5250396097686625375" />
+    <dependent_file file="cpu\etpu_spark_auto.h" time="5250396111099301709" />
     <dependent_file file="..\API\knock\etpu_knock.h" time="5249455410516469314" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_knock_auto.h" time="5250396097686445861" />
+    <dependent_file file="cpu\etpu_knock_auto.h" time="5250396111099132194" />
     <dependent_file file="..\API\inj\etpu_inj.h" time="5249455410516369560" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_inj_auto.h" time="5250396097686426011" />
+    <dependent_file file="cpu\etpu_inj_auto.h" time="5250396111099111785" />
     <dependent_file file="..\API\tg\etpu_tg.h" time="5249455410516668773" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="cpu\etpu_tg_auto.h" time="5250396097686645324" />
+    <dependent_file file="cpu\etpu_tg_auto.h" time="5250396111099311250" />
     <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
   </make_node>
-  <make_node target="Host" file="obj\etpu_util.o" time="5250396097701844701">
-    <dependent_file file="eTPU\utils\etpu_util.c" time="5249455410519522963" />
-    <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
-    <dependent_file file="include\typedefs.h" time="5249455410520502115" />
-    <dependent_file file="eTPU\utils\etpu_struct.h" time="5249455410519473091" />
-    <dependent_file file="include\typedefs.h" time="5249455410520502115" />
-    <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
-  </make_node>
-  <make_node target="Host" file="obj\etpu_cam.o" time="5250396097704656679">
+  <make_node target="Host" file="obj\etpu_cam.o" time="5250396111116597553">
     <dependent_file file="..\API\cam\etpu_cam.c" time="5249455410515890848" />
     <dependent_file file="..\API\cam\etpu_cam.h" time="5249455410515930734" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
     <dependent_file file="eTPU\utils\etpu_struct.h" time="5249455410519473091" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
-    <dependent_file file="cpu\etpu_cam_auto.h" time="5250396097686326176" />
+    <dependent_file file="cpu\etpu_cam_auto.h" time="5250396111099012476" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
   </make_node>
-  <make_node target="Host" file="obj\etpu_crank.o" time="5250396097706374879">
+  <make_node target="Host" file="obj\etpu_crank.o" time="5250396111118835199">
     <dependent_file file="..\API\crank\etpu_crank.c" time="5249455410516020512" />
     <dependent_file file="..\API\crank\etpu_crank.h" time="5249455410516060739" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
     <dependent_file file="eTPU\utils\etpu_struct.h" time="5249455410519473091" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
-    <dependent_file file="cpu\etpu_crank_auto.h" time="5250396097686356096" />
+    <dependent_file file="cpu\etpu_crank_auto.h" time="5250396111099042391" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
   </make_node>
-  <make_node target="Host" file="obj\etpu_fuel.o" time="5250396097708561865">
+  <make_node target="Host" file="obj\etpu_fuel.o" time="5250396111121445238">
     <dependent_file file="..\API\fuel\etpu_fuel.c" time="5249455410516220387" />
     <dependent_file file="..\API\fuel\etpu_fuel.h" time="5249455410516250308" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
     <dependent_file file="eTPU\utils\etpu_struct.h" time="5249455410519473091" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
-    <dependent_file file="cpu\etpu_fuel_auto.h" time="5250396097686395996" />
+    <dependent_file file="cpu\etpu_fuel_auto.h" time="5250396111099081860" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
   </make_node>
-  <make_node target="Host" file="obj\etpu_inj.o" time="5250396097710280210">
+  <make_node target="Host" file="obj\etpu_inj.o" time="5250396111123227685">
     <dependent_file file="..\API\inj\etpu_inj.c" time="5249455410516320118" />
     <dependent_file file="..\API\inj\etpu_inj.h" time="5249455410516369560" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
     <dependent_file file="eTPU\utils\etpu_struct.h" time="5249455410519473091" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
-    <dependent_file file="cpu\etpu_inj_auto.h" time="5250396097686426011" />
+    <dependent_file file="cpu\etpu_inj_auto.h" time="5250396111099111785" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
   </make_node>
-  <make_node target="Host" file="obj\etpu_knock.o" time="5250396097712623409">
+  <make_node target="Host" file="obj\etpu_knock.o" time="5250396111125118282">
     <dependent_file file="..\API\knock\etpu_knock.c" time="5249455410516439375" />
     <dependent_file file="..\API\knock\etpu_knock.h" time="5249455410516469314" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
     <dependent_file file="eTPU\utils\etpu_struct.h" time="5249455410519473091" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
-    <dependent_file file="cpu\etpu_knock_auto.h" time="5250396097686445861" />
+    <dependent_file file="cpu\etpu_knock_auto.h" time="5250396111099132194" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
   </make_node>
-  <make_node target="Host" file="obj\etpu_spark.o" time="5250396097715435258">
+  <make_node target="Host" file="obj\etpu_spark.o" time="5250396111126993768">
     <dependent_file file="..\API\spark\etpu_spark.c" time="5249455410516529503" />
     <dependent_file file="..\API\spark\etpu_spark.h" time="5249455410516569040" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
     <dependent_file file="eTPU\utils\etpu_struct.h" time="5249455410519473091" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
-    <dependent_file file="cpu\etpu_spark_auto.h" time="5250396097686625375" />
+    <dependent_file file="cpu\etpu_spark_auto.h" time="5250396111099301709" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
   </make_node>
-  <make_node target="Host" file="obj\etpu_tg.o" time="5250396097717778447">
+  <make_node target="Host" file="obj\etpu_tg.o" time="5250396111128969656">
     <dependent_file file="..\API\tg\etpu_tg.c" time="5249455410516629351" />
     <dependent_file file="..\API\tg\etpu_tg.h" time="5249455410516668773" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
     <dependent_file file="eTPU\utils\etpu_struct.h" time="5249455410519473091" />
     <dependent_file file="include\typedefs.h" time="5249455410520502115" />
-    <dependent_file file="cpu\etpu_tg_auto.h" time="5250396097686645324" />
+    <dependent_file file="cpu\etpu_tg_auto.h" time="5250396111099311250" />
     <dependent_file file="eTPU\utils\etpu_util.h" time="5249455410519572834" />
     <dependent_file file="Project.FullSysIdeProj" time="5250396096244906061" />
   </make_node>
