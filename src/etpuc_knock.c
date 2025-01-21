@@ -319,7 +319,7 @@ _eTPU_thread KNOCK::TRIGGER(_eTPU_matches_disabled)
 	channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
 
 	/* End of window? */
-	if(tcr2 >= tcr2_window_end)
+	if((int24_t)(tcr2 - tcr2_window_end) >= 0)
 	{
 		/* IRQ & DMA at window end */
 		if(irq_dma_options & KNOCK_IRQ_AT_WINDOW_END)
