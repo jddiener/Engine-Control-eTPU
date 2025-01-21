@@ -431,7 +431,7 @@ _eTPU_fragment CRANK::Stall_NoReturn(void)
     /* set default values */
     eng_trr_norm = trr = 0xffffff;
     tpr = 0;
-    /* reset TCR2 if it is in a range that could cause immediate macthes to occur when
+    /* reset TCR2 if it is NOT in a range that could cause immediate matches to occur before
        dependent channels (fuel, spark, etc.) re-initialize, otherwise it will be reset
        in CRANK_FIRST_TRANS to prevent short spurious outputs between now and dependent
        channel re-initialization. */
