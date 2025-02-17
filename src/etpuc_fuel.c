@@ -81,6 +81,77 @@
 *******************************************************************************/
 
 /*******************************************************************************
+*  FUNCTION NAME: Init_NoReturn
+*  DESCRIPTION: Perform initialization actions for either startup, sync or stall
+*******************************************************************************/
+_eTPU_fragment FUEL::Init_NoReturn(void)
+{
+	int24_t tmp;
+
+	/* Stop the channel */
+	/* Disable event handling */
+	channel.MTD = MTD_DISABLE;
+	/* Disable match detection */
+	channel.MRLE = MRLE_DISABLE;
+	/* Reset all latches */
+	channel.TDL = TDL_CLEAR;
+	channel.LSR = LSR_CLEAR;
+	channel.MRLA = MRL_CLEAR;
+	channel.MRLB = MRL_CLEAR;
+
+	/* Initialize the channel */
+	/* Set channel mode: either match non-blocking single transition */
+	channel.PDCM = PDCM_EM_NB_ST;
+	/* Time base selection */
+	channel.TBSA = TBS_M1C1GE;
+	channel.TBSB = TBS_M2C1GE;
+	/* Input pin action control */
+	channel.IPACA = IPAC_NO_DETECT;
+	channel.IPACB = IPAC_NO_DETECT;
+	/* Output pin action control */
+	if(cc.FM0 == FUEL_FM0_ACTIVE_HIGH)
+	{
+		channel.PIN = PIN_SET_LOW;
+		channel.OPACB = OPAC_MATCH_LOW;
+	}
+	else
+	{
+		channel.PIN = PIN_SET_HIGH;
+		channel.OPACB = OPAC_MATCH_HIGH;
+	}
+	/* Enable output pin buffer */
+	channel.TBSA = TBSA_SET_OBE;
+	/* Channel flags */
+	channel.FLAG0 = FUEL_FLAG0_INJ_NOT_ACTIVE;
+	channel.FLAG1 = FUEL_FLAG1_RECALC_ANGLE;
+	is_await_recalc = TRUE;
+	angle_offset_recalc_working = angle_offset_recalc;
+
+    if (eng_pos_state != ENG_POS_FULL_SYNC)
+    {
+        /* only fully start the fuel processing once sync is achieved */
+        return;
+    }
+	
+	/* Initialize actual TDC angle */
+	tdc_angle_actual = eng_cycle_tcr2_start + tdc_angle;
+	angle_stop_actual_last = tdc_angle_actual - angle_stop - eng_cycle_tcr2_ticks;
+	
+	/* Calculate the first start angle */
+    is_first_recalc = TRUE;
+	tmp = injection_time + compensation_time;
+	tmp = CRANK_Time_to_Angle_LowRes(tmp);
+	injection_start_angle = tdc_angle_actual - angle_normal_end - tmp;
+	
+	/* Schedule the first RECAL_ANGLE - double angle_offset_recalc */
+	ertb = injection_start_angle - 2*angle_offset_recalc;
+	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+
+	/* Enable event handling */
+	channel.MTD = MTD_ENABLE;
+}
+
+/*******************************************************************************
 *  FUNCTION NAME: OnRecalcAngle_NoReturn
 *  DESCRIPTION: Recalculate start angle and schedule PULSE_START.
 *               Schedule STOP_ANGLE. 
@@ -288,69 +359,7 @@ void FUEL::OnPulseEnd(void)
 **************************************************************************/
 _eTPU_thread FUEL::INIT(_eTPU_matches_disabled)
 {
-	int24_t tmp;
-
-	/* Stop the channel */
-	/* Disable event handling */
-	channel.MTD = MTD_DISABLE;
-	/* Disable match detection */
-	channel.MRLE = MRLE_DISABLE;
-	/* Reset all latches */
-	channel.TDL = TDL_CLEAR;
-	channel.LSR = LSR_CLEAR;
-	channel.MRLA = MRL_CLEAR;
-	channel.MRLB = MRL_CLEAR;
-
-	/* Initialize the channel */
-	/* Set channel mode: either match non-blocking single transition */
-	channel.PDCM = PDCM_EM_NB_ST;
-	/* Time base selection */
-	channel.TBSA = TBS_M1C1GE;
-	channel.TBSB = TBS_M2C1GE;
-	/* Input pin action control */
-	channel.IPACA = IPAC_NO_DETECT;
-	channel.IPACB = IPAC_NO_DETECT;
-	/* Output pin action control */
-	if(cc.FM0 == FUEL_FM0_ACTIVE_HIGH)
-	{
-		channel.PIN = PIN_SET_LOW;
-		channel.OPACB = OPAC_MATCH_LOW;
-	}
-	else
-	{
-		channel.PIN = PIN_SET_HIGH;
-		channel.OPACB = OPAC_MATCH_HIGH;
-	}
-	/* Enable output pin buffer */
-	channel.TBSA = TBSA_SET_OBE;
-	/* Channel flags */
-	channel.FLAG0 = FUEL_FLAG0_INJ_NOT_ACTIVE;
-	channel.FLAG1 = FUEL_FLAG1_RECALC_ANGLE;
-	is_await_recalc = TRUE;
-	angle_offset_recalc_working = angle_offset_recalc;
-
-    if (eng_pos_state != ENG_POS_FULL_SYNC)
-    {
-        /* only fully start the fuel processing once sync is achieved */
-        return;
-    }
-	
-	/* Initialize actual TDC angle */
-	tdc_angle_actual = eng_cycle_tcr2_start + tdc_angle;
-	angle_stop_actual_last = tdc_angle_actual - angle_stop - eng_cycle_tcr2_ticks;
-	
-	/* Calculate the first start angle */
-    is_first_recalc = TRUE;
-	tmp = injection_time + compensation_time;
-	tmp = CRANK_Time_to_Angle_LowRes(tmp);
-	injection_start_angle = tdc_angle_actual - angle_normal_end - tmp;
-	
-	/* Schedule the first RECAL_ANGLE - double angle_offset_recalc */
-	ertb = injection_start_angle - 2*angle_offset_recalc;
-	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
-
-	/* Enable event handling */
-	channel.MTD = MTD_ENABLE;
+    Init_NoReturn();
 }
 
 /**************************************************************************
@@ -455,7 +464,11 @@ _eTPU_thread FUEL::UPDATE_ACTIVE(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread FUEL::PULSE_START(_eTPU_matches_disabled)
 {
-	SchedulePulseEnd_NoReturn();
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    SchedulePulseEnd_NoReturn();
 }
 
 /**************************************************************************
@@ -464,7 +477,11 @@ _eTPU_thread FUEL::PULSE_START(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread FUEL::PULSE_END(_eTPU_matches_disabled)
 {
-	OnPulseEnd();
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    OnPulseEnd();
 }
 
 /**************************************************************************
@@ -473,7 +490,11 @@ _eTPU_thread FUEL::PULSE_END(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread FUEL::STOP_ANGLE_INACTIVE(_eTPU_matches_disabled)
 {
-	OnStopAngle_NoReturn();
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    OnStopAngle_NoReturn();
 }
 
 /**************************************************************************
@@ -482,15 +503,19 @@ _eTPU_thread FUEL::STOP_ANGLE_INACTIVE(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread FUEL::STOP_ANGLE_ACTIVE(_eTPU_matches_disabled)
 {
-	/* set error flag */
-	error |= FUEL_ERROR_STOP_ANGLE_APPLIED;
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    /* set error flag */
+    error |= FUEL_ERROR_STOP_ANGLE_APPLIED;
 
-	/* service PULSE_END first */
-	erta = ertb; /* put pulse end time into erta where it is expected */
-	OnPulseEnd();
-	
-	/* Process normal STOP_ANGLE */
-	OnStopAngle_NoReturn();
+    /* service PULSE_END first */
+    erta = ertb; /* put pulse end time into erta where it is expected */
+    OnPulseEnd();
+
+    /* Process normal STOP_ANGLE */
+    OnStopAngle_NoReturn();
 }
 /**************************************************************************
 * THREAD NAME: RECALC_ANGLE
@@ -498,14 +523,18 @@ _eTPU_thread FUEL::STOP_ANGLE_ACTIVE(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread FUEL::RECALC_ANGLE(_eTPU_matches_disabled)
 {
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
     if (is_first_recalc)
     {
         is_first_recalc = FALSE;
         angle_offset_recalc_working >>= 2;
         ScheduleRecalc_NoReturn();
     }
-    
-	OnRecalcAngle_NoReturn();
+
+    OnRecalcAngle_NoReturn();
 }
 
 

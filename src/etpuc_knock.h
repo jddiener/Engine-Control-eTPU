@@ -76,12 +76,14 @@ public:
     _eTPU_thread WINDOW_START(_eTPU_matches_disabled);
     _eTPU_thread WINDOW_END(_eTPU_matches_disabled);
     _eTPU_thread TRIGGER(_eTPU_matches_disabled);
+    _eTPU_thread LINK_OR_ERROR(_eTPU_matches_disabled);
     
     
     /************************************/
     
     /* methods and fragments */
-    
+
+    _eTPU_fragment Init_NoReturn(void);
     _eTPU_fragment ScheduleStartAngle_NoReturn(void);
     
     

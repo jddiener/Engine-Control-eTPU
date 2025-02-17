@@ -85,54 +85,10 @@
 *******************************************************************************/
 
 /*******************************************************************************
-*  FUNCTION NAME: ReadWindow
-*  DESCRIPTION: Schedule the IRQ_ANGLE, set flag.
+*  FUNCTION NAME: Init_NoReturn
+*  DESCRIPTION: Perform initialization actions for either startup, sync or stall
 *******************************************************************************/
-_eTPU_fragment KNOCK::ScheduleStartAngle_NoReturn(void)
-{
-	/* semi-assembly code for coherent read from knock window array */
-    register_diob diob = (int24_t)p_window;
-    NOP();
-	/* [MISRA 2004 Rule 2.1] Assembly language shall be encapsulated and isolated */
-#asm
-    ram p <- by diob++.
-    ram p <- by diob; alu ertb = p.
-    alu erta = p.
-#endasm
-
-    /* Calculate absolute TCR2 angles */
-	ertb = tdc_angle_actual - ertb;
-	tcr2_window_start = ertb;
-	tcr2_window_end = ertb + erta;
-    /* Schedule start angle */
-	channel.MRLB = MRL_CLEAR;
-	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
-	
-	/* Increment p_window pointer */
-	p_window++;
-	/* Increment window counter */
-	window_counter++;
-	/* Last window in cycle? */
-	if(window_counter >= window_count)
-	{
-		/* Reset window pointer and counter */
-		window_counter = 0;
-		p_window = p_window_first;
-		/* Update actual TDC angle for next cycle */
-		tdc_angle_actual += eng_cycle_tcr2_ticks;
-	}
-}
-
-
-/*******************************************************************************
-*  eTPU Function
-*******************************************************************************/
-
-/**************************************************************************
-* THREAD NAME: INIT
-* DESCRIPTION: Initialize the channel to run the KNOCK function.
-**************************************************************************/
-_eTPU_thread KNOCK::INIT(_eTPU_matches_disabled)
+_eTPU_fragment KNOCK::Init_NoReturn(void)
 {
 	/* Stop the channel */
 	/* Disable event handling */
@@ -190,6 +146,60 @@ _eTPU_thread KNOCK::INIT(_eTPU_matches_disabled)
 	ScheduleStartAngle_NoReturn();
 }
 
+
+/*******************************************************************************
+*  FUNCTION NAME: ScheduleStartAngle_NoReturn
+*  DESCRIPTION: Schedule the IRQ_ANGLE, set flag.
+*******************************************************************************/
+_eTPU_fragment KNOCK::ScheduleStartAngle_NoReturn(void)
+{
+	/* semi-assembly code for coherent read from knock window array */
+    register_diob diob = (int24_t)p_window;
+    NOP();
+	/* [MISRA 2004 Rule 2.1] Assembly language shall be encapsulated and isolated */
+#asm
+    ram p <- by diob++.
+    ram p <- by diob; alu ertb = p.
+    alu erta = p.
+#endasm
+
+    /* Calculate absolute TCR2 angles */
+	ertb = tdc_angle_actual - ertb;
+	tcr2_window_start = ertb;
+	tcr2_window_end = ertb + erta;
+    /* Schedule start angle */
+	channel.MRLB = MRL_CLEAR;
+	channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+	
+	/* Increment p_window pointer */
+	p_window++;
+	/* Increment window counter */
+	window_counter++;
+	/* Last window in cycle? */
+	if(window_counter >= window_count)
+	{
+		/* Reset window pointer and counter */
+		window_counter = 0;
+		p_window = p_window_first;
+		/* Update actual TDC angle for next cycle */
+		tdc_angle_actual += eng_cycle_tcr2_ticks;
+	}
+}
+
+
+/*******************************************************************************
+*  eTPU Function
+*******************************************************************************/
+
+/**************************************************************************
+* THREAD NAME: INIT
+* DESCRIPTION: Initialize the channel to run the KNOCK function.
+**************************************************************************/
+_eTPU_thread KNOCK::INIT(_eTPU_matches_disabled)
+{
+    Init_NoReturn();
+}
+
 /**************************************************************************
 * THREAD NAME: STOP
 * DESCRIPTION: Stop the running injection sequence.
@@ -203,7 +213,6 @@ _eTPU_thread KNOCK::STOP(_eTPU_matches_disabled)
 	channel.MRLE = MRLE_DISABLE;
 	/* Reset all latches */
 	channel.TDL = TDL_CLEAR;
-	channel.LSR = LSR_CLEAR;
 	channel.MRLA = MRL_CLEAR;
 	channel.MRLB = MRL_CLEAR;
 	/* Output pin action control */
@@ -223,49 +232,53 @@ _eTPU_thread KNOCK::STOP(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread KNOCK::WINDOW_START(_eTPU_matches_disabled)
 {
-	/* IRQ & DMA at window start */
-	if(irq_dma_options & KNOCK_IRQ_AT_WINDOW_START)
-	{
-		channel.CIRC = CIRC_INT_FROM_SERVICED;
-	}
-	if(irq_dma_options & KNOCK_DMA_AT_WINDOW_START)
-	{
-		channel.CIRC = CIRC_DATA_FROM_SERVICED;
-	}
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    /* IRQ & DMA at window start */
+    if(irq_dma_options & KNOCK_IRQ_AT_WINDOW_START)
+    {
+        channel.CIRC = CIRC_INT_FROM_SERVICED;
+    }
+    if(irq_dma_options & KNOCK_DMA_AT_WINDOW_START)
+    {
+        channel.CIRC = CIRC_DATA_FROM_SERVICED;
+    }
 
-	/* Channel flag */
-	channel.FLAG0 = KNOCK_FLAG0_WINDOW_ACTIVE;
-	
-	if(cc.FM1 == KNOCK_FM1_MODE_GATE)
-	{
-		/* Channel flag */
-		channel.FLAG1 = KNOCK_FLAG1_MODE_GATE;
-		/* Output pin action control */
-		channel.OPACB = OPAC_MATCH_LOW;
-		if(channel.FM0 == KNOCK_FM0_ACTIVE_LOW)
-		{
-			channel.OPACB = OPAC_MATCH_HIGH;
-		}
-		/* Schedule WINDOW_END */
-		ertb = tcr2_window_end;
-		channel.MRLB = MRL_CLEAR;
-		channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
-	}
-	else  /* KNOCK_FM1_MODE_TRIGGER */
-	{
-		/* Channel flag */
-		channel.FLAG1 = KNOCK_FLAG1_MODE_TRIGGER;
-		/* Time base selection */
-		channel.TBSB = TBS_M1C1GE;  /* match on time and capture time */
-		/* Schedule end of trigger pulse */
-		erta = ertb + (trigger_period >> 1);
-		channel.MRLB = MRL_CLEAR;
-		channel.MRLA = MRL_CLEAR;
-		channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
-		/* Schedule next TRIGGER */
-		ertb += trigger_period;
-		channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
-	}
+    /* Channel flag */
+    channel.FLAG0 = KNOCK_FLAG0_WINDOW_ACTIVE;
+
+    if(cc.FM1 == KNOCK_FM1_MODE_GATE)
+    {
+        /* Channel flag */
+        channel.FLAG1 = KNOCK_FLAG1_MODE_GATE;
+        /* Output pin action control */
+        channel.OPACB = OPAC_MATCH_LOW;
+        if(channel.FM0 == KNOCK_FM0_ACTIVE_LOW)
+        {
+            channel.OPACB = OPAC_MATCH_HIGH;
+        }
+        /* Schedule WINDOW_END */
+        ertb = tcr2_window_end;
+        channel.MRLB = MRL_CLEAR;
+        channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+    }
+    else  /* KNOCK_FM1_MODE_TRIGGER */
+    {
+        /* Channel flag */
+        channel.FLAG1 = KNOCK_FLAG1_MODE_TRIGGER;
+        /* Time base selection */
+        channel.TBSB = TBS_M1C1GE;  /* match on time and capture time */
+        /* Schedule end of trigger pulse */
+        erta = ertb + (trigger_period >> 1);
+        channel.MRLB = MRL_CLEAR;
+        channel.MRLA = MRL_CLEAR;
+        channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+        /* Schedule next TRIGGER */
+        ertb += trigger_period;
+        channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+    }
 }
 
 /**************************************************************************
@@ -274,26 +287,30 @@ _eTPU_thread KNOCK::WINDOW_START(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread KNOCK::WINDOW_END(_eTPU_matches_disabled)
 {
-	/* IRQ & DMA at window end */
-	if(irq_dma_options & KNOCK_IRQ_AT_WINDOW_END)
-	{
-		channel.CIRC = CIRC_INT_FROM_SERVICED;
-	}
-	if(irq_dma_options & KNOCK_DMA_AT_WINDOW_END)
-	{
-		channel.CIRC = CIRC_DATA_FROM_SERVICED;
-	}
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    /* IRQ & DMA at window end */
+    if(irq_dma_options & KNOCK_IRQ_AT_WINDOW_END)
+    {
+        channel.CIRC = CIRC_INT_FROM_SERVICED;
+    }
+    if(irq_dma_options & KNOCK_DMA_AT_WINDOW_END)
+    {
+        channel.CIRC = CIRC_DATA_FROM_SERVICED;
+    }
 
-	/* Channel flag */
-	channel.FLAG0 = KNOCK_FLAG0_WINDOW_NOT_ACTIVE;
-	/* Output pin action control */
-	channel.OPACB = OPAC_MATCH_HIGH;
-	if(channel.FM0 == KNOCK_FM0_ACTIVE_LOW)
-	{
-		channel.OPACB = OPAC_MATCH_LOW;
-	}
-	/* Schedule next window start */
-	ScheduleStartAngle_NoReturn();
+    /* Channel flag */
+    channel.FLAG0 = KNOCK_FLAG0_WINDOW_NOT_ACTIVE;
+    /* Output pin action control */
+    channel.OPACB = OPAC_MATCH_HIGH;
+    if(channel.FM0 == KNOCK_FM0_ACTIVE_LOW)
+    {
+        channel.OPACB = OPAC_MATCH_LOW;
+    }
+    /* Schedule next window start */
+    ScheduleStartAngle_NoReturn();
 }
 
 /**************************************************************************
@@ -302,48 +319,65 @@ _eTPU_thread KNOCK::WINDOW_END(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread KNOCK::TRIGGER(_eTPU_matches_disabled)
 {
-	/* IRQ & DMA at every trigger */
-	if(irq_dma_options & KNOCK_IRQ_AT_EVERY_TRIGGER)
-	{
-		channel.CIRC = CIRC_INT_FROM_SERVICED;
-	}
-	if(irq_dma_options & KNOCK_DMA_AT_EVERY_TRIGGER)
-	{
-		channel.CIRC = CIRC_DATA_FROM_SERVICED;
-	}
-	
-	/* Schedule end of this trigger pulse */
-	erta = ertb + (trigger_period >> 1);
-	channel.MRLB = MRL_CLEAR;
-	channel.MRLA = MRL_CLEAR;
-	channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    /* IRQ & DMA at every trigger */
+    if(irq_dma_options & KNOCK_IRQ_AT_EVERY_TRIGGER)
+    {
+        channel.CIRC = CIRC_INT_FROM_SERVICED;
+    }
+    if(irq_dma_options & KNOCK_DMA_AT_EVERY_TRIGGER)
+    {
+        channel.CIRC = CIRC_DATA_FROM_SERVICED;
+    }
 
-	/* End of window? */
-	if((int24_t)(tcr2 - tcr2_window_end) >= 0)
-	{
-		/* IRQ & DMA at window end */
-		if(irq_dma_options & KNOCK_IRQ_AT_WINDOW_END)
-		{
-			channel.CIRC = CIRC_INT_FROM_SERVICED;
-		}
-		if(irq_dma_options & KNOCK_DMA_AT_WINDOW_END)
-		{
-			channel.CIRC = CIRC_DATA_FROM_SERVICED;
-		}
+    /* Schedule end of this trigger pulse */
+    erta = ertb + (trigger_period >> 1);
+    channel.MRLB = MRL_CLEAR;
+    channel.MRLA = MRL_CLEAR;
+    channel.ERWA = ERW_WRITE_ERT_TO_MATCH;
 
-		/* Channel flag */
-		channel.FLAG0 = KNOCK_FLAG0_WINDOW_NOT_ACTIVE;
-		/* Time base selection */
-		channel.TBSB = TBS_M2C1GE;  /* match on angle and capture time */
-		/* Schedule next WINDOW_START */
-		ScheduleStartAngle_NoReturn();
-	}
-	else
-	{
-		/* Schedule next TRIGGER */
-		ertb += trigger_period;
-		channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
-	}
+    /* End of window? */
+    if((int24_t)(tcr2 - tcr2_window_end) >= 0)
+    {
+        /* IRQ & DMA at window end */
+        if(irq_dma_options & KNOCK_IRQ_AT_WINDOW_END)
+        {
+            channel.CIRC = CIRC_INT_FROM_SERVICED;
+        }
+        if(irq_dma_options & KNOCK_DMA_AT_WINDOW_END)
+        {
+            channel.CIRC = CIRC_DATA_FROM_SERVICED;
+        }
+
+        /* Channel flag */
+        channel.FLAG0 = KNOCK_FLAG0_WINDOW_NOT_ACTIVE;
+        /* Time base selection */
+        channel.TBSB = TBS_M2C1GE;  /* match on angle and capture time */
+        /* Schedule next WINDOW_START */
+        ScheduleStartAngle_NoReturn();
+    }
+    else
+    {
+        /* Schedule next TRIGGER */
+        ertb += trigger_period;
+        channel.ERWB = ERW_WRITE_ERT_TO_MATCH;
+    }
+}
+
+/**************************************************************************
+* THREAD NAME: LINK_OR_ERROR
+* DESCRIPTION: Handles a possible asynchronous link (stall), or processes an error
+**************************************************************************/
+_eTPU_thread KNOCK::LINK_OR_ERROR(_eTPU_matches_disabled)
+{
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    _Error_handler_unexpected_thread();
 }
 
 
@@ -379,19 +413,21 @@ DEFINE_ENTRY_TABLE(KNOCK, KNOCK, alternate, outputpin, autocfsr)
 	ETPU_VECTOR1(0,     x,  1, 1, 0,  1, 1, TRIGGER),
 	ETPU_VECTOR1(0,     x,  1, 1, 1,  1, 1, TRIGGER),
 
+	//           HSR    LSR M1 M2 PIN F0 F1 vector
+	ETPU_VECTOR1(0,     x,  1, 0, 0,  0, 0, LINK_OR_ERROR),
+	ETPU_VECTOR1(0,     x,  1, 0, 0,  1, 0, LINK_OR_ERROR),
+	ETPU_VECTOR1(0,     x,  1, 0, 0,  0, 1, LINK_OR_ERROR),
+	ETPU_VECTOR1(0,     x,  1, 0, 0,  1, 1, LINK_OR_ERROR),
+	ETPU_VECTOR1(0,     x,  1, 0, 1,  0, 0, LINK_OR_ERROR),
+	ETPU_VECTOR1(0,     x,  1, 0, 1,  1, 0, LINK_OR_ERROR),
+	ETPU_VECTOR1(0,     x,  1, 0, 1,  0, 1, LINK_OR_ERROR),
+	ETPU_VECTOR1(0,     x,  1, 0, 1,  1, 1, LINK_OR_ERROR),
+
     // unused/invalid entries
 	ETPU_VECTOR2(2,3,   x,  x, x, 0,  0, x, _Error_handler_unexpected_thread),
 	ETPU_VECTOR2(2,3,   x,  x, x, 0,  1, x, _Error_handler_unexpected_thread),
 	ETPU_VECTOR2(2,3,   x,  x, x, 1,  0, x, _Error_handler_unexpected_thread),
 	ETPU_VECTOR2(2,3,   x,  x, x, 1,  1, x, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  1, 0, 0,  0, 0, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  1, 0, 0,  1, 0, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  1, 0, 0,  0, 1, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  1, 0, 0,  1, 1, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  1, 0, 1,  0, 0, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  1, 0, 1,  1, 0, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  1, 0, 1,  0, 1, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  1, 0, 1,  1, 1, _Error_handler_unexpected_thread),
 };
 
 

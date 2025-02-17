@@ -97,12 +97,14 @@ public:
     _eTPU_thread END_ANGLE(_eTPU_matches_disabled);
     _eTPU_thread MAX_DWELL_TIME(_eTPU_matches_disabled);
     _eTPU_thread MULTI_PULSE(_eTPU_matches_disabled);
+    _eTPU_thread LINK_OR_ERROR(_eTPU_matches_disabled);
 
     
     /************************************/
     
     /* methods and fragments */
     
+    _eTPU_fragment Init_NoReturn(void);
     _eTPU_fragment ScheduleNextRecalcAngle_NoReturn(void);
     _eTPU_fragment ScheduleRecalcAngle_NoReturn(void);
     _eTPU_fragment ScheduleStartAngle_NoReturn(void);

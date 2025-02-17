@@ -86,6 +86,7 @@ public:
     
     /* methods and fragments */
     
+    _eTPU_fragment Init_NoReturn(void);
     _eTPU_fragment OnRecalcAngle_NoReturn(void);
     _eTPU_fragment OnStopAngle_NoReturn(void);
     _eTPU_fragment ScheduleRecalc_NoReturn(void);

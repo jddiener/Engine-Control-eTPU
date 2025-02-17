@@ -115,6 +115,58 @@
 *******************************************************************************/
 
 /*******************************************************************************
+*  FUNCTION NAME: Init_NoReturn
+*  DESCRIPTION: Perform initialization actions for either startup, sync or stall
+*******************************************************************************/
+_eTPU_fragment SPARK::Init_NoReturn(void)
+{
+	/* Stop the channel */
+	/* Disable event handling */
+	channel.MTD = MTD_DISABLE;
+	/* Disable match detection */
+	channel.MRLE = MRLE_DISABLE;
+	/* Reset all latches */
+	channel.TDL = TDL_CLEAR;
+	channel.LSR = LSR_CLEAR;
+	channel.MRLA = MRL_CLEAR;
+	channel.MRLB = MRL_CLEAR;
+
+	/* Initialize the channel */
+	/* Input pin action control */
+	channel.IPACA = IPAC_NO_DETECT;
+	channel.IPACB = IPAC_NO_DETECT;
+	/* Enable output pin buffer */
+	channel.TBSA = TBSA_SET_OBE;
+
+	/* Set the pin to the inactive state */
+	if(cc.FM0 == SPARK_FM0_ACTIVE_HIGH)
+	{
+		channel.PIN = PIN_SET_LOW;
+	}
+	else
+	{
+		channel.PIN = PIN_SET_HIGH;
+	}				
+
+	/* Initialize spark counter so that it is reset in ScheduleNextRecalAngle_NoReturn() */
+	spark_counter = spark_count;
+	/* Initialize actual TDC angle (eng_cycle_tcr2_ticks is added in ScheduleNextRecalAngle_NoReturn()) */
+	tdc_angle_actual = eng_cycle_tcr2_start + tdc_angle - eng_cycle_tcr2_ticks;
+	
+	/* Enable event handling */
+	channel.MTD = MTD_ENABLE;
+
+    if (eng_pos_state != ENG_POS_FULL_SYNC)
+    {
+        /* only fully start the spark processing once sync is achieved */
+        return;
+    }
+
+	/* Schedule the first RECALC_ANGLE */
+	ScheduleNextRecalcAngle_NoReturn();
+}
+
+/*******************************************************************************
 *  FUNCTION NAME: ScheduleNextRecalcAngle_NoReturn
 *  DESCRIPTION: Schedule next RECALC_ANGLE
 *******************************************************************************/
@@ -360,50 +412,7 @@ void SPARK::ReadSparkParams(void)
 **************************************************************************/
 _eTPU_thread SPARK::INIT(_eTPU_matches_disabled)
 {
-	/* Stop the channel */
-	/* Disable event handling */
-	channel.MTD = MTD_DISABLE;
-	/* Disable match detection */
-	channel.MRLE = MRLE_DISABLE;
-	/* Reset all latches */
-	channel.TDL = TDL_CLEAR;
-	channel.LSR = LSR_CLEAR;
-	channel.MRLA = MRL_CLEAR;
-	channel.MRLB = MRL_CLEAR;
-
-	/* Initialize the channel */
-	/* Input pin action control */
-	channel.IPACA = IPAC_NO_DETECT;
-	channel.IPACB = IPAC_NO_DETECT;
-	/* Enable output pin buffer */
-	channel.TBSA = TBSA_SET_OBE;
-
-	/* Set the pin to the inactive state */
-	if(cc.FM0 == SPARK_FM0_ACTIVE_HIGH)
-	{
-		channel.PIN = PIN_SET_LOW;
-	}
-	else
-	{
-		channel.PIN = PIN_SET_HIGH;
-	}				
-
-	/* Initialize spark counter so that it is reset in ScheduleNextRecalAngle_NoReturn() */
-	spark_counter = spark_count;
-	/* Initialize actual TDC angle (eng_cycle_tcr2_ticks is added in ScheduleNextRecalAngle_NoReturn()) */
-	tdc_angle_actual = eng_cycle_tcr2_start + tdc_angle - eng_cycle_tcr2_ticks;
-	
-	/* Enable event handling */
-	channel.MTD = MTD_ENABLE;
-
-    if (eng_pos_state != ENG_POS_FULL_SYNC)
-    {
-        /* only fully start the spark processing once sync is achieved */
-        return;
-    }
-
-	/* Schedule the first RECALC_ANGLE */
-	ScheduleNextRecalcAngle_NoReturn();
+    Init_NoReturn();
 }
 
 /**************************************************************************
@@ -451,6 +460,10 @@ _eTPU_thread SPARK::UPDATE(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread SPARK::RECALC_ANGLE(_eTPU_matches_disabled)
 {
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
     if (is_first_recalc)
     {
         /* channel interrupt */
@@ -461,17 +474,17 @@ _eTPU_thread SPARK::RECALC_ANGLE(_eTPU_matches_disabled)
         ScheduleRecalcAngle_NoReturn();
     }
 
-	if((generation_disable == SPARK_GENERATION_ALLOWED) &&
-	   (dwell_time > 0))
-	{
-		/* Schedule START_ANGLE */
-		ScheduleStartAngle_NoReturn();
-	}
-	else
-	{
-		/* Skip to next spark and schedule next RECALC_ANGLE */
-		ScheduleNextRecalcAngle_NoReturn();
-	}
+    if((generation_disable == SPARK_GENERATION_ALLOWED) &&
+       (dwell_time > 0))
+    {
+        /* Schedule START_ANGLE */
+        ScheduleStartAngle_NoReturn();
+    }
+    else
+    {
+        /* Skip to next spark and schedule next RECALC_ANGLE */
+        ScheduleNextRecalcAngle_NoReturn();
+    }
 }
 
 /**************************************************************************
@@ -481,11 +494,15 @@ _eTPU_thread SPARK::RECALC_ANGLE(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread SPARK::START_ANGLE(_eTPU_matches_disabled)
 {
-	/* Store pulse start time */
-	pulse_start_time = ertb;
-	
-	/* Schedule MIN_DWELL_TIME */
-	ScheduleMinDwellTime_NoReturn();
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    /* Store pulse start time */
+    pulse_start_time = ertb;
+
+    /* Schedule MIN_DWELL_TIME */
+    ScheduleMinDwellTime_NoReturn();
 }
 
 /**************************************************************************
@@ -494,6 +511,10 @@ _eTPU_thread SPARK::START_ANGLE(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread SPARK::MIN_DWELL_TIME(_eTPU_matches_disabled)
 {
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
     /* check for min dwell conditions - if end angle came before this
      * min dwell match, flag it */
     if ((tdc_angle_actual - end_angle) - ertb <= 0)
@@ -513,23 +534,27 @@ _eTPU_thread SPARK::MIN_DWELL_TIME(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread SPARK::END_ANGLE(_eTPU_matches_disabled)
 {
-	/* Store applied dwell time */
-	dwell_time_applied = ertb - pulse_start_time;
-	
-	/* Multi-pulse sequence ? */
-	if(multi_pulse_count > 0)
-	{
-		/* Reset multi-pulse counter */
-		multi_pulse_counter = 0;
-		/* Schedule the first MULTI_PULSE */
-		erta = ertb;
-		ScheduleMultiPulse_NoReturn();
-	}
-	else
-	{
-		/* Schedule next RECALC_ANGLE */
-		ScheduleNextRecalcAngle_NoReturn();
-	}
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    /* Store applied dwell time */
+    dwell_time_applied = ertb - pulse_start_time;
+
+    /* Multi-pulse sequence ? */
+    if(multi_pulse_count > 0)
+    {
+        /* Reset multi-pulse counter */
+        multi_pulse_counter = 0;
+        /* Schedule the first MULTI_PULSE */
+        erta = ertb;
+        ScheduleMultiPulse_NoReturn();
+    }
+    else
+    {
+        /* Schedule next RECALC_ANGLE */
+        ScheduleNextRecalcAngle_NoReturn();
+    }
 }
 
 /**************************************************************************
@@ -540,25 +565,29 @@ _eTPU_thread SPARK::END_ANGLE(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread SPARK::MAX_DWELL_TIME(_eTPU_matches_disabled)
 {
-	/* Store applied dwell time */
-	dwell_time_applied = erta - pulse_start_time;
-	
-	/* Set error */
-	error |= SPARK_ERROR_MAX_DWELL_APPLIED;
-	
-	/* Multi-pulse sequence ? */
-	if(multi_pulse_count > 0)
-	{
-		/* Reset multi-pulse counter */
-		multi_pulse_counter = 0;
-		/* Schedule the first MULTI_PULSE */
-		ScheduleMultiPulse_NoReturn();
-	}
-	else
-	{
-		/* Schedule next RECALC_ANGLE */
-		ScheduleNextRecalcAngle_NoReturn();
-	}
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    /* Store applied dwell time */
+    dwell_time_applied = erta - pulse_start_time;
+
+    /* Set error */
+    error |= SPARK_ERROR_MAX_DWELL_APPLIED;
+
+    /* Multi-pulse sequence ? */
+    if(multi_pulse_count > 0)
+    {
+        /* Reset multi-pulse counter */
+        multi_pulse_counter = 0;
+        /* Schedule the first MULTI_PULSE */
+        ScheduleMultiPulse_NoReturn();
+    }
+    else
+    {
+        /* Schedule next RECALC_ANGLE */
+        ScheduleNextRecalcAngle_NoReturn();
+    }
 }
 
 /**************************************************************************
@@ -567,17 +596,34 @@ _eTPU_thread SPARK::MAX_DWELL_TIME(_eTPU_matches_disabled)
 **************************************************************************/
 _eTPU_thread SPARK::MULTI_PULSE(_eTPU_matches_disabled)
 {
-	multi_pulse_counter++;
-	if(multi_pulse_counter < multi_pulse_count)
-	{
-		/* Schedule next MULTI_PULSE */
-		ScheduleMultiPulse_NoReturn();
-	}
-	else
-	{
-		/* Schedule next RECALC_ANGLE */
-		ScheduleNextRecalcAngle_NoReturn();
-	}
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    multi_pulse_counter++;
+    if(multi_pulse_counter < multi_pulse_count)
+    {
+        /* Schedule next MULTI_PULSE */
+        ScheduleMultiPulse_NoReturn();
+    }
+    else
+    {
+        /* Schedule next RECALC_ANGLE */
+        ScheduleNextRecalcAngle_NoReturn();
+    }
+}
+
+/**************************************************************************
+* THREAD NAME: LINK_OR_ERROR
+* DESCRIPTION: Handles a possible asynchronous link (stall), or processes an error
+**************************************************************************/
+_eTPU_thread SPARK::LINK_OR_ERROR(_eTPU_matches_disabled)
+{
+    if (channel.LSR == 1)
+    {
+        Init_NoReturn();
+    }
+    _Error_handler_unexpected_thread();
 }
 
 
@@ -624,14 +670,16 @@ DEFINE_ENTRY_TABLE(SPARK, SPARK, alternate, outputpin, autocfsr)
 	ETPU_VECTOR1(0,     x,  1, 1, 0,  0, 0, MULTI_PULSE),
 	ETPU_VECTOR1(0,     x,  1, 1, 1,  0, 0, MULTI_PULSE),
 
+	//           HSR    LSR M1 M2 PIN F0 F1 vector
+	ETPU_VECTOR1(0,     x,  1, 0, 0,  0, 0, LINK_OR_ERROR),
+	ETPU_VECTOR1(0,     x,  1, 0, 0,  0, 1, LINK_OR_ERROR),
+	ETPU_VECTOR1(0,     x,  1, 0, 1,  0, 0, LINK_OR_ERROR),
+	ETPU_VECTOR1(0,     x,  1, 0, 1,  0, 1, LINK_OR_ERROR),
+	ETPU_VECTOR1(0,     x,  0, 1, 0,  1, 1, LINK_OR_ERROR),
+	ETPU_VECTOR1(0,     x,  0, 1, 1,  1, 1, LINK_OR_ERROR),
+
     // unused/invalid entries
 	ETPU_VECTOR3(1,4,5, x,  x, x, x,  x, x, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  1, 0, 0,  0, 0, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  1, 0, 0,  0, 1, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  1, 0, 1,  0, 0, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  1, 0, 1,  0, 1, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  0, 1, 0,  1, 1, _Error_handler_unexpected_thread),
-	ETPU_VECTOR1(0,     x,  0, 1, 1,  1, 1, _Error_handler_unexpected_thread),
 };
 
 
