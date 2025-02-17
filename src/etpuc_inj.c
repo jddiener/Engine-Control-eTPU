@@ -656,6 +656,9 @@ _eTPU_thread INJ::STOP_ANGLE_WHILE_ACTIVE(_eTPU_matches_disabled)
 		}
 		/* Channel flag */
 		channel.FLAG0 = INJ_FLAG0_INJ_SEQ_NOT_ACTIVE;
+
+		/* reset to the injection counter as would occur on a normal end of injection */
+		injection_counter = 0;
 		
 		/* Free BANK channels for other injectors */
 		inj_global.active_bank_chans.parts.bits31_24 &= ~bank_chans_mask.parts.bits31_24;
