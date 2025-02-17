@@ -12,6 +12,12 @@ ASH WARE Inc. John Diener john.diener@ashware.com
 
 # Release Information
 
+## 1.2.0
+
+- fix an issue wherein a knock window could be malformed on TCR2 rollover
+- the INJ function (direct injection) was not resetting the injection counter when an injection was ended early by the stop angle, interfering with the ability of the host API to control the function
+- cleaned up FUEL/KNOCK/SPARK behavior on stall, ensuring the channels and their outputs reset to the proper state immediately
+
 ## 1.1.0
 
 - fix an issue where an initial FUEL pulse after synchonization could have incorrect timing and be much too long
